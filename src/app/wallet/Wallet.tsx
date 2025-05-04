@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { styled } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Container from '@mui/material/Container';
@@ -22,16 +22,31 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import CircularProgress from '@mui/material/CircularProgress';
+import Alert from '@mui/material/Alert';
+import Snackbar from '@mui/material/Snackbar';
 
 // 아이콘
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import AddIcon from '@mui/icons-material/Add';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 import AppTheme from '@/theme/AppTheme';
 import AppAppBar from '@/components/AppAppBar';
 import { brand, gray } from '@/theme/themePrimitives';
+
+// API 응답 타입 정의
+interface ApiAsset {
+  astNum: number;
+  astName: string;
+  astSymbol: string;
+  astType: string;
+  astNetwork: string;
+  astDecimals: number;
+  active: string;
+}
 
 // 자산 인터페이스
 interface Asset {
@@ -42,10 +57,39 @@ interface Asset {
   balanceUsd: string;
   price: string;
   portfolioPercent: string;
+  type?: string;
+  network?: string;
+  decimals?: number;
 }
 
 // 정렬 필드 타입
 type SortField = 'name' | 'balance' | 'price' | 'portfolioPercent';
+
+// 가격 데이터 매핑 (실제로는 별도 API에서 가져와야 함)
+const priceData: Record<string, string> = {
+  'BTC': '$95,563.72 USD',
+  'ETH': '$1,827.29 USD',
+  'USDT': '$1.00 USD',
+  'BNB': '$594.90 USD',
+  'SOL': '$145.42 USD',
+  'USD': '$1.00 USD'
+};
+
+// API에서 가져온 데이터를 Asset 형식으로 변환하는 함수
+const mapApiAssetToAsset = (apiAsset: ApiAsset): Asset => {
+  return {
+    id: apiAsset.astNum,
+    name: apiAsset.astName,
+    symbol: apiAsset.astSymbol,
+    balance: `0 ${apiAsset.astSymbol}`,
+    balanceUsd: '$0.00 USD',
+    price: priceData[apiAsset.astSymbol] || '$0.00 USD',
+    portfolioPercent: '0%',
+    type: apiAsset.astType,
+    network: apiAsset.astNetwork,
+    decimals: apiAsset.astDecimals
+  };
+};
 
 // 정렬 함수
 const sortAssets = (
@@ -101,7 +145,7 @@ const searchAssets = (
 };
 
 // 스타일링된 컴포넌트
-const AssetAvatar = styled(Avatar)(() => ({
+const AssetAvatar = styled(Avatar)(({ theme }) => ({
   width: 32,
   height: 32,
   backgroundColor: brand[100],
@@ -144,10 +188,9 @@ const CoinIcon = ({ symbol }: { symbol: string }) => {
       bgColor = '#00FFBD20';
       color = '#00FFBD';
       break;
-    case 'USD':
+    default:
       bgColor = '#71B2C920';
       color = '#71B2C9';
-      break;
   }
   
   return (
@@ -157,70 +200,69 @@ const CoinIcon = ({ symbol }: { symbol: string }) => {
   );
 };
 
-// 임시 자산 데이터
-const userAssets: Asset[] = [
-  { 
-    id: 1, 
-    name: 'Bitcoin', 
-    symbol: 'BTC', 
-    balance: '0 BTC', 
-    balanceUsd: '$0.00 USD', 
-    price: '$95,563.72 USD', 
-    portfolioPercent: '0%'
-  },
-  { 
-    id: 2, 
-    name: 'Ethereum', 
-    symbol: 'ETH', 
-    balance: '0 ETH', 
-    balanceUsd: '$0.00 USD', 
-    price: '$1,827.29 USD', 
-    portfolioPercent: '0%'
-  },
-  { 
-    id: 3, 
-    name: 'Tether', 
-    symbol: 'USDT', 
-    balance: '0 USDT', 
-    balanceUsd: '$0.00 USD', 
-    price: '$1.00 USD', 
-    portfolioPercent: '0%'
-  },
-  { 
-    id: 4, 
-    name: 'BNB Token', 
-    symbol: 'BNB', 
-    balance: '0 BNB', 
-    balanceUsd: '$0.00 USD', 
-    price: '$594.90 USD', 
-    portfolioPercent: '0%'
-  },
-  { 
-    id: 5, 
-    name: 'Solana', 
-    symbol: 'SOL', 
-    balance: '0 SOL', 
-    balanceUsd: '$0.00 USD', 
-    price: '$145.42 USD', 
-    portfolioPercent: '0%'
-  },
-  { 
-    id: 6, 
-    name: 'US Dollar', 
-    symbol: 'USD', 
-    balance: '0 FIATUSD', 
-    balanceUsd: '$0.00 USD', 
-    price: '$1.00 USD', 
-    portfolioPercent: '0%'
-  }
-];
+// API 호출 베이스 URL
+const API_BASE_URL = 'http://localhost:8080';
 
 export default function Wallet(props: { disableCustomTheme?: boolean }) {
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [sortBy, setSortBy] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [snackbar, setSnackbar] = useState<{open: boolean, message: string, severity: 'success' | 'error' | 'info'}>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+  
   const open = Boolean(anchorEl);
+
+  // API에서 자산 데이터 가져오기
+  const fetchAssets = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/assets`);
+      
+      if (!response.ok) {
+        throw new Error(`API 요청 실패: ${response.status}`);
+      }
+      
+      const apiAssets: ApiAsset[] = await response.json();
+      const mappedAssets = apiAssets.map(mapApiAssetToAsset);
+      
+      setAssets(mappedAssets);
+      if (refreshing) {
+        setSnackbar({
+          open: true,
+          message: '자산 목록이 갱신되었습니다.',
+          severity: 'success'
+        });
+        setRefreshing(false);
+      }
+    } catch (err) {
+      console.error('자산 데이터 가져오기 오류:', err);
+      setError('자산 데이터를 불러오는 중 오류가 발생했습니다. 네트워크 연결을 확인하세요.');
+      setRefreshing(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 컴포넌트 마운트 시 자산 데이터 로드
+  useEffect(() => {
+    fetchAssets();
+  }, []);
+
+  // 새로고침 핸들러
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchAssets();
+  };
   
   // 정렬 메뉴 열기
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -246,13 +288,27 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
   };
+
+  // 스낵바 닫기 핸들러
+  const handleSnackbarClose = () => {
+    setSnackbar({...snackbar, open: false});
+  };
   
   // 검색 및 정렬이 적용된 자산 목록
   const filteredAssets = sortAssets(
-    searchAssets(userAssets, searchTerm),
+    searchAssets(assets, searchTerm),
     sortBy,
     sortDirection
   );
+
+  // 자산 생성 핸들러 (실제로는 로그인 후 구현해야 함)
+  const handleCreateWallet = () => {
+    setSnackbar({
+      open: true,
+      message: '자산 생성을 위해서는 로그인이 필요합니다.',
+      severity: 'info'
+    });
+  };
 
   return (
     <AppTheme {...props}>
@@ -263,6 +319,18 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
         component="main"
         sx={{ display: 'flex', flexDirection: 'column', mt: 16, mb: 8, gap: 4 }}
       >
+        {/* 스낵바 알림 */}
+        <Snackbar 
+          open={snackbar.open} 
+          autoHideDuration={6000} 
+          onClose={handleSnackbarClose}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+        
         {/* 총 자산 가치 영역 */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>
@@ -303,6 +371,19 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
               }}
             />
             
+            {/* 모든 자산 표시 버튼 */}
+            <Chip 
+              label="Show All Assets" 
+              variant="outlined"
+              onClick={handleRefresh}
+              sx={{ 
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '13px',
+                height: '38px',
+              }}
+            />
+            
             {/* 정렬 드롭다운 */}
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <Button
@@ -337,6 +418,7 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
               variant="contained"
               color="primary"
               startIcon={<AddIcon />}
+              onClick={handleCreateWallet}
               sx={{ 
                 borderRadius: '8px',
                 textTransform: 'none',
@@ -350,88 +432,114 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
           </Box>
         </Box>
         
+        {/* 에러 메시지 */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+        
+        {/* 로딩 상태 */}
+        {loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+            <CircularProgress />
+          </Box>
+        )}
+        
         {/* 자산 테이블 */}
-        <TableContainer component={Paper} sx={{ boxShadow: 'none', border: `1px solid ${gray[200]}` }}>
-          <Table sx={{ minWidth: 650 }}>
-            <TableHead>
-              <TableRow sx={{ backgroundColor: gray[50] }}>
-                <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Asset</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Balance</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Price</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Portfolio %</TableCell>
-                <TableCell sx={{ width: '200px' }}></TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredAssets.map((asset) => (
-                <TableRow
-                  key={asset.id}
-                  sx={{ 
-                    '&:hover': { 
-                      backgroundColor: (theme) => 
-                        theme.palette.mode === 'dark' ? gray[800] : gray[50] 
-                    },
-                    '& td': { py: 2 } 
-                  }}
-                >
-                  {/* 자산 정보 */}
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <CoinIcon symbol={asset.symbol} />
-                      <Box>
-                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                          {asset.name}
+        {!loading && (
+          <TableContainer component={Paper} sx={{ boxShadow: 'none', border: `1px solid ${gray[200]}` }}>
+            <Table sx={{ minWidth: 650 }}>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: gray[50] }}>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Asset</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Balance</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Price</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Portfolio %</TableCell>
+                  <TableCell sx={{ width: '200px' }}></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredAssets.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                      <Typography variant="body1" color="text.secondary">
+                        {searchTerm ? '검색 결과가 없습니다.' : '자산이 없습니다.'}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredAssets.map((asset) => (
+                    <TableRow
+                      key={asset.id}
+                      sx={{ 
+                        '&:hover': { 
+                          backgroundColor: (theme) => 
+                            theme.palette.mode === 'dark' ? gray[800] : gray[50] 
+                        },
+                        '& td': { py: 2 } 
+                      }}
+                    >
+                      {/* 자산 정보 */}
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <CoinIcon symbol={asset.symbol} />
+                          <Box>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                              {asset.name}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                              {asset.symbol}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      
+                      {/* 잔액 정보 */}
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {asset.balance}
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                          {asset.symbol}
+                          {asset.balanceUsd}
                         </Typography>
-                      </Box>
-                    </Box>
-                  </TableCell>
-                  
-                  {/* 잔액 정보 */}
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {asset.balance}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {asset.balanceUsd}
-                    </Typography>
-                  </TableCell>
-                  
-                  {/* 가격 정보 */}
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {asset.price}
-                    </Typography>
-                  </TableCell>
-                  
-                  {/* 포트폴리오 비율 */}
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {asset.portfolioPercent}
-                    </Typography>
-                  </TableCell>
-                  
-                  {/* 액션 버튼 */}
-                  <TableCell align="right">
-                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                      <ActionButton variant="outlined" startIcon={<ArrowDropDownIcon />}>
-                        Deposit
-                      </ActionButton>
-                      <ActionButton variant="outlined" startIcon={<ArrowDropDownIcon />}>
-                        Withdraw
-                      </ActionButton>
-                      <IconButton size="small">
-                        <MoreVertIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                      </TableCell>
+                      
+                      {/* 가격 정보 */}
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {asset.price}
+                        </Typography>
+                      </TableCell>
+                      
+                      {/* 포트폴리오 비율 */}
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {asset.portfolioPercent}
+                        </Typography>
+                      </TableCell>
+                      
+                      {/* 액션 버튼 */}
+                      <TableCell align="right">
+                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                          <ActionButton variant="outlined" startIcon={<ArrowDropDownIcon />}>
+                            Deposit
+                          </ActionButton>
+                          <ActionButton variant="outlined" startIcon={<ArrowDropDownIcon />}>
+                            Withdraw
+                          </ActionButton>
+                          <IconButton size="small">
+                            <MoreVertIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
       </Container>
     </AppTheme>
   );
