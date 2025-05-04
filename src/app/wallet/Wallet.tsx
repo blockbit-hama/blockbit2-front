@@ -36,6 +36,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import AppTheme from '@/theme/AppTheme';
 import AppAppBar from '@/components/AppAppBar';
 import { brand, gray } from '@/theme/themePrimitives';
+import { fetchWithAuth, getUserId } from '@/lib/auth';
 
 // API 응답 타입 정의
 interface ApiAsset {
@@ -46,6 +47,20 @@ interface ApiAsset {
   astNetwork: string;
   astDecimals: number;
   active: string;
+}
+
+// 지갑 API 응답 타입
+interface ApiWallet {
+  walNum: number;
+  walName: string;
+  walType: string;
+  walProtocol: string;
+  walStatus: string;
+  usiNum: number;
+  astId: number;
+  polId: number;
+  active: string;
+  balance?: string; // 실제 API에는 없지만, 예시로 추가
 }
 
 // 자산 인터페이스
@@ -60,6 +75,7 @@ interface Asset {
   type?: string;
   network?: string;
   decimals?: number;
+  walletId?: number;
 }
 
 // 정렬 필드 타입
@@ -76,18 +92,22 @@ const priceData: Record<string, string> = {
 };
 
 // API에서 가져온 데이터를 Asset 형식으로 변환하는 함수
-const mapApiAssetToAsset = (apiAsset: ApiAsset): Asset => {
+const mapApiAssetToAsset = (apiAsset: ApiAsset, wallets: ApiWallet[]): Asset => {
+  // 해당 자산에 관련된 지갑 찾기
+  const relatedWallet = wallets.find(wallet => wallet.astId === apiAsset.astNum);
+  
   return {
     id: apiAsset.astNum,
     name: apiAsset.astName,
     symbol: apiAsset.astSymbol,
-    balance: `0 ${apiAsset.astSymbol}`,
-    balanceUsd: '$0.00 USD',
+    balance: relatedWallet ? `0 ${apiAsset.astSymbol}` : `0 ${apiAsset.astSymbol}`, // 실제 잔액은 지갑 API에서 가져와야 함
+    balanceUsd: '$0.00 USD', // 실제 USD 가치는 별도 계산 필요
     price: priceData[apiAsset.astSymbol] || '$0.00 USD',
-    portfolioPercent: '0%',
+    portfolioPercent: '0%', // 실제 포트폴리오 비율 계산 필요
     type: apiAsset.astType,
     network: apiAsset.astNetwork,
-    decimals: apiAsset.astDecimals
+    decimals: apiAsset.astDecimals,
+    walletId: relatedWallet?.walNum
   };
 };
 
@@ -205,6 +225,7 @@ const API_BASE_URL = 'http://localhost:8080';
 
 export default function Wallet(props: { disableCustomTheme?: boolean }) {
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [wallets, setWallets] = useState<ApiWallet[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -212,6 +233,7 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [sortBy, setSortBy] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [totalBalance, setTotalBalance] = useState<string>('$0.00 USD');
   const [snackbar, setSnackbar] = useState<{open: boolean, message: string, severity: 'success' | 'error' | 'info'}>({
     open: false,
     message: '',
@@ -220,22 +242,58 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
   
   const open = Boolean(anchorEl);
 
+  // 사용자의 지갑 데이터 가져오기
+  const fetchWallets = async () => {
+    try {
+      const userId = getUserId();
+      
+      if (!userId) {
+        throw new Error('User ID not found');
+      }
+      
+      const response = await fetchWithAuth(`${API_BASE_URL}/api/wallets/user/${userId}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch wallets: ${response.status}`);
+      }
+      
+      const walletData: ApiWallet[] = await response.json();
+      setWallets(walletData);
+      
+      return walletData;
+    } catch (err) {
+      console.error('Error fetching wallets:', err);
+      setError('지갑 정보를 불러오는 중 오류가 발생했습니다.');
+      return [];
+    }
+  };
+
   // API에서 자산 데이터 가져오기
   const fetchAssets = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/api/assets`);
+      // 자산 API 호출
+      const assetResponse = await fetch(`${API_BASE_URL}/api/assets`);
       
-      if (!response.ok) {
-        throw new Error(`API 요청 실패: ${response.status}`);
+      if (!assetResponse.ok) {
+        throw new Error(`Asset API request failed: ${assetResponse.status}`);
       }
       
-      const apiAssets: ApiAsset[] = await response.json();
-      const mappedAssets = apiAssets.map(mapApiAssetToAsset);
+      const apiAssets: ApiAsset[] = await assetResponse.json();
+      
+      // 지갑 데이터 가져오기
+      const walletData = await fetchWallets();
+      
+      // 자산 데이터 매핑
+      const mappedAssets = apiAssets.map(apiAsset => mapApiAssetToAsset(apiAsset, walletData));
       
       setAssets(mappedAssets);
+      
+      // 총 자산 가치 계산 (실제로는 더 복잡한 로직이 필요)
+      calculateTotalBalance(mappedAssets);
+      
       if (refreshing) {
         setSnackbar({
           open: true,
@@ -251,6 +309,13 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // 총 자산 가치 계산 함수
+  const calculateTotalBalance = (assetList: Asset[]) => {
+    // 실제로는 각 자산의 USD 가치를 합산하는 로직이 필요
+    // 현재는 예시로 0으로 설정
+    setTotalBalance('$0.00 USD');
   };
 
   // 컴포넌트 마운트 시 자산 데이터 로드
@@ -301,11 +366,30 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
     sortDirection
   );
 
-  // 자산 생성 핸들러 (실제로는 로그인 후 구현해야 함)
+  // 자산 생성 핸들러
   const handleCreateWallet = () => {
+    // 실제로는 지갑 생성 모달 또는 페이지로 이동
     setSnackbar({
       open: true,
-      message: '자산 생성을 위해서는 로그인이 필요합니다.',
+      message: '지갑 생성 기능은 준비 중입니다.',
+      severity: 'info'
+    });
+  };
+
+  // 입금 처리 핸들러
+  const handleDeposit = (asset: Asset) => {
+    setSnackbar({
+      open: true,
+      message: `${asset.name} 입금 기능은 준비 중입니다.`,
+      severity: 'info'
+    });
+  };
+
+  // 출금 처리 핸들러
+  const handleWithdraw = (asset: Asset) => {
+    setSnackbar({
+      open: true,
+      message: `${asset.name} 출금 기능은 준비 중입니다.`,
       severity: 'info'
     });
   };
@@ -334,7 +418,7 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
         {/* 총 자산 가치 영역 */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>
-            $0.00 USD
+            {totalBalance}
           </Typography>
           <Typography variant="body1" sx={{ color: 'text.secondary' }}>
             Total value of all your assets
@@ -522,10 +606,18 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
                       {/* 액션 버튼 */}
                       <TableCell align="right">
                         <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                          <ActionButton variant="outlined" startIcon={<ArrowDropDownIcon />}>
+                          <ActionButton 
+                            variant="outlined" 
+                            startIcon={<ArrowDropDownIcon />}
+                            onClick={() => handleDeposit(asset)}
+                          >
                             Deposit
                           </ActionButton>
-                          <ActionButton variant="outlined" startIcon={<ArrowDropDownIcon />}>
+                          <ActionButton 
+                            variant="outlined" 
+                            startIcon={<ArrowDropDownIcon />}
+                            onClick={() => handleWithdraw(asset)}
+                          >
                             Withdraw
                           </ActionButton>
                           <IconButton size="small">
