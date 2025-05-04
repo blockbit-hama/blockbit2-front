@@ -1,6 +1,7 @@
 "use client";
 
 import { AppBar, Toolbar, Typography, Button, Box } from "@mui/material";
+import Image from 'next/image';
 import Link from "next/link";
 
 export default function SimpleHeader() {
@@ -9,7 +10,7 @@ export default function SimpleHeader() {
             <Toolbar sx={{ justifyContent: "space-between", padding: "10px 20px" }}>
                 {/* 로고 및 서비스명 */}
                 <Box sx={{ display: "flex", alignItems: "center" }}>
-                    <img src="/logo.png" alt="BlockBit Logo" width={40} height={40} style={{ marginRight: "10px" }} />
+                    <Image src="/logo.png" alt="BlockBit Logo" width={40} height={40} style={{ marginRight: "10px" }} />
                     <Typography variant="h6" color="primary" sx={{ fontWeight: "bold" }}>
                         BlockBit
                     </Typography>

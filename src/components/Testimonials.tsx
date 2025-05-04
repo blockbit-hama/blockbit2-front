@@ -9,6 +9,7 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Grid from '@mui/material/Grid';
+import Image from 'next/image';
 import { useTheme } from '@mui/system';
 
 const userTestimonials = [
@@ -149,7 +150,7 @@ export default function Testimonials() {
                   title={testimonial.name}
                   subheader={testimonial.occupation}
                 />
-                <img
+                <Image
                   src={logos[index]}
                   alt={`Logo ${index + 1}`}
                   style={logoStyle}

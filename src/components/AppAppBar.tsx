@@ -7,6 +7,7 @@ import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
+import Image from 'next/image';
 
 import Link from "next/link";
 import {BlockBitIcon} from "@/components/CustomIcons";
@@ -58,7 +59,7 @@ export default function AppAppBar() {
             <Container maxWidth="lg">
                 <StyledToolbar variant="dense" disableGutters>
                     <Box sx={{flexGrow: 1, display: 'flex', alignItems: 'center', px: 0}}>
-                        <img src="/logo.png" alt="BlockBit Logo" width={40} height={40} style={{marginRight: "10px"}}/>
+                        <Image src="/logo.png" alt="BlockBit Logo" width={40} height={40} style={{marginRight: "10px"}}/>
                         <BlockBitIcon/>
                         <Box sx={{display: {xs: 'none', md: 'flex'}}}>
                             <Link href="/wallet" passHref>

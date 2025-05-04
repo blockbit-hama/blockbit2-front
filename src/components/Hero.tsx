@@ -2,14 +2,9 @@
 
 import * as React from 'react';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
-import InputLabel from '@mui/material/InputLabel';
-import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import visuallyHidden from '@mui/utils/visuallyHidden';
 import { styled } from '@mui/material/styles';
 
 const StyledBox = styled('div')(({ theme }) => ({
@@ -76,7 +71,7 @@ export default function Hero() {
               fontSize: 'clamp(3rem, 10vw, 3.5rem)',
             }}
           >
-            The World's&nbsp;Fastest&nbsp;
+            The World&apos;s&nbsp;Fastest&nbsp;
             <Typography
               component="span"
               variant="h1"
@@ -98,7 +93,7 @@ export default function Hero() {
               width: { sm: '100%', md: '80%' },
             }}
           >
-              Experience the world’s fastest digital asset platform, BlockBit, designed to revolutionize your trading experience. Our cutting-edge technology ensures lightning-fast transactions, unmatched security, and seamless accessibility
+              Experience the world&apos;s fastest digital asset platform, BlockBit, designed to revolutionize your trading experience. Our cutting-edge technology ensures lightning-fast transactions, unmatched security, and seamless accessibility.
           </Typography>
         </Stack>
         <StyledBox id="image" />

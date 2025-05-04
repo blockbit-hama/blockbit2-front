@@ -15,7 +15,7 @@ export default function ColorModeSelect(props: SelectProps) {
         setMode(event.target.value as 'system' | 'light' | 'dark')
       }
       SelectDisplayProps={{
-        // @ts-ignore
+        // @ts-expect-error: This prop is intentionally left out due to compatibility issues with MUI v5
         'data-screenshot': 'toggle-mode',
       }}
       {...props}

@@ -110,14 +110,13 @@ export function MobileLayout({
               backgroundImage: 'var(--items-imageDark)',
             }),
           })}
-          style={
-            items[selectedItemIndex]
-              ? ({
-                  '--items-imageLight': items[selectedItemIndex].imageLight,
-                  '--items-imageDark': items[selectedItemIndex].imageDark,
-                } as any)
-              : {}
-          }
+          style={{
+            '--items-imageLight': items[selectedItemIndex].imageLight,
+            '--items-imageDark': items[selectedItemIndex].imageDark,
+          } as React.CSSProperties & {
+            '--items-imageLight': string;
+            '--items-imageDark': string;
+          }}
         />
         <Box sx={{ px: 2, pb: 2 }}>
           <Typography
@@ -257,14 +256,13 @@ export default function Features() {
                   backgroundImage: 'var(--items-imageDark)',
                 }),
               })}
-              style={
-                items[selectedItemIndex]
-                  ? ({
-                      '--items-imageLight': items[selectedItemIndex].imageLight,
-                      '--items-imageDark': items[selectedItemIndex].imageDark,
-                    } as any)
-                  : {}
-              }
+              style={{
+                '--items-imageLight': items[selectedItemIndex].imageLight,
+                '--items-imageDark': items[selectedItemIndex].imageDark,
+              } as React.CSSProperties & {
+                '--items-imageLight': string;
+                '--items-imageDark': string;
+              }}
             />
           </Card>
         </Box>
