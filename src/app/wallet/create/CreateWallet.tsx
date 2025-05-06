@@ -11,7 +11,6 @@ import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import FormControl from '@mui/material/FormControl';
-import FormLabel from '@mui/material/FormLabel';
 import TextField from '@mui/material/TextField';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
@@ -30,10 +29,9 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AppTheme from '@/theme/AppTheme';
 import AppAppBar from '@/components/AppAppBar';
 import { useRouter } from 'next/navigation';
-import { fetchWithAuth, getUserId } from '@/lib/auth';
-
-// API 호출 베이스 URL
-const API_BASE_URL = 'http://localhost:8080';
+import { getUserId } from '@/lib/auth';
+import { createWallet } from '@/services/walletService';
+import { getAssetIdByType } from '@/services/assetService';
 
 // 서명 프로토콜 카드 컴포넌트 스타일링
 const ProtocolCard = styled(Card)(({ theme }) => ({
@@ -148,7 +146,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
   // 다음 단계로 이동
   const handleNext = () => {
     if (activeStep === steps.length - 1) {
-      // 마지막 단계에서는 지갑 생성 API
+      // 마지막 단계에서는 지갑 생성 API 호출
       handleCreateWallet();
     } else {
       setActiveStep((prevActiveStep) => prevActiveStep + 1);
@@ -166,48 +164,35 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
     setError('');
     
     try {
-      // fetchWithAuth 함수를 사용해 API 호출
-      const response = await fetchWithAuth(`${API_BASE_URL}/api/wallets`, {
-        method: 'POST',
-        body: JSON.stringify({
-          walName: walletName,
-          walType: walletType,
-          walProtocol: selectedProtocol,
-          walPwd: walletPassword,
-          walStatus: 'active',
-          usiNum: getUserId(), // 현재 로그인한 사용자 ID
-          astId: getAssetId(assetType), // 선택한 자산 ID
-          polId: 1 // 정책 ID
-        })
-      });
+      const userId = getUserId();
       
-      if (!response.ok) {
-        throw new Error('지갑 생성에 실패했습니다.');
+      if (!userId) {
+        throw new Error('사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.');
       }
       
-      const data = await response.json();
+      // 자산 ID 가져오기
+      const assetId = getAssetIdByType(assetType);
+      
+      // 지갑 생성 API 호출
+      const response = await createWallet({
+        walName: walletName,
+        walType: walletType,
+        walProtocol: selectedProtocol,
+        walPwd: walletPassword,
+        walStatus: 'active',
+        usiNum: userId,
+        astId: assetId,
+        polId: 1 // 정책 ID는 일단 1로 고정
+      });
       
       // 지갑 생성 성공 시 지갑 목록 페이지로 이동
       router.push('/wallet');
-    } catch (err) {
-      console.error('지갑 생성 오류:', err);
-      setError('지갑 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
+    } catch (error) {
+      console.error('지갑 생성 오류:', error);
+      setError(error instanceof Error ? error.message : '지갑 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
     } finally {
       setLoading(false);
     }
-  };
-
-  // 자산 유형에 따른 ID 반환 (임시 구현, 실제로는 API에서 가져온 목록을 사용해야 함)
-  const getAssetId = (assetType: string) => {
-    const assetMap: {[key: string]: number} = {
-      'Bitcoin': 1,
-      'Ethereum': 2,
-      'Bitcoin Cash': 3,
-      'Litecoin': 4,
-      'ERC-20': 5
-    };
-    
-    return assetMap[assetType] || 1;
   };
 
   // 각 단계별 컴포넌트 렌더링
