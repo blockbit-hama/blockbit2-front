@@ -25,6 +25,7 @@ import MenuItem from '@mui/material/MenuItem';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
+import Tooltip from '@mui/material/Tooltip';
 
 // 아이콘
 import SearchIcon from '@mui/icons-material/Search';
@@ -32,10 +33,12 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import AddIcon from '@mui/icons-material/Add';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 import AppTheme from '@/theme/AppTheme';
 import AppAppBar from '@/components/AppAppBar';
-import { brand, gray } from '@/theme/themePrimitives';
+import { brand, gray, green, red } from '@/theme/themePrimitives';
 import { fetchWithAuth, getUserId } from '@/lib/auth';
 
 // API 응답 타입 정의
@@ -60,7 +63,33 @@ interface ApiWallet {
   astId: number;
   polId: number;
   active: string;
-  balance?: string; // 실제 API에는 없지만, 예시로 추가
+}
+
+// 주소 API 응답 타입
+interface ApiAddress {
+  adrNum: number;
+  adrAddress: string;
+  adrLabel: string;
+  adrType: string;
+  adrPath: string;
+  walId: number;
+  astId: number;
+  active: string;
+}
+
+// 잔액 API 응답 타입
+interface ApiBalance {
+  balNum: number;
+  adrId: number;
+  astId: number;
+  balBefore: number;
+  balAfter: number;
+  balConfirmed: number;
+  balPending: number;
+  creusr: number;
+  credat: string;
+  cretim: string;
+  active: string;
 }
 
 // 자산 인터페이스
@@ -76,93 +105,26 @@ interface Asset {
   network?: string;
   decimals?: number;
   walletId?: number;
+  address?: string;
+  addressId?: number;
+  addressType?: string;
 }
 
 // 정렬 필드 타입
 type SortField = 'name' | 'balance' | 'price' | 'portfolioPercent';
 
 // 가격 데이터 매핑 (실제로는 별도 API에서 가져와야 함)
-const priceData: Record<string, string> = {
-  'BTC': '$95,563.72 USD',
-  'ETH': '$1,827.29 USD',
-  'USDT': '$1.00 USD',
-  'BNB': '$594.90 USD',
-  'SOL': '$145.42 USD',
-  'USD': '$1.00 USD'
+const priceData: Record<string, {price: string, change24h: string}> = {
+  'BTC': { price: '$95,563.72', change24h: '+1.2%' },
+  'ETH': { price: '$1,827.29', change24h: '-0.5%' },
+  'USDT': { price: '$1.00', change24h: '0.0%' },
+  'BNB': { price: '$594.90', change24h: '+0.8%' },
+  'SOL': { price: '$145.42', change24h: '+3.2%' },
+  'USD': { price: '$1.00', change24h: '0.0%' }
 };
 
-// API에서 가져온 데이터를 Asset 형식으로 변환하는 함수
-const mapApiAssetToAsset = (apiAsset: ApiAsset, wallets: ApiWallet[]): Asset => {
-  // 해당 자산에 관련된 지갑 찾기
-  const relatedWallet = wallets.find(wallet => wallet.astId === apiAsset.astNum);
-  
-  return {
-    id: apiAsset.astNum,
-    name: apiAsset.astName,
-    symbol: apiAsset.astSymbol,
-    balance: relatedWallet ? `0 ${apiAsset.astSymbol}` : `0 ${apiAsset.astSymbol}`, // 실제 잔액은 지갑 API에서 가져와야 함
-    balanceUsd: '$0.00 USD', // 실제 USD 가치는 별도 계산 필요
-    price: priceData[apiAsset.astSymbol] || '$0.00 USD',
-    portfolioPercent: '0%', // 실제 포트폴리오 비율 계산 필요
-    type: apiAsset.astType,
-    network: apiAsset.astNetwork,
-    decimals: apiAsset.astDecimals,
-    walletId: relatedWallet?.walNum
-  };
-};
-
-// 정렬 함수
-const sortAssets = (
-  assets: Asset[],
-  sortBy: SortField,
-  direction: 'asc' | 'desc'
-): Asset[] => {
-  return [...assets].sort((a, b) => {
-    // 이름 정렬
-    if (sortBy === 'name') {
-      return direction === 'asc' 
-        ? a.name.localeCompare(b.name) 
-        : b.name.localeCompare(a.name);
-    }
-    
-    // 가격 정렬
-    if (sortBy === 'price') {
-      const aPrice = parseFloat(a.price.replace(/[^\d.-]/g, ''));
-      const bPrice = parseFloat(b.price.replace(/[^\d.-]/g, ''));
-      return direction === 'asc' ? aPrice - bPrice : bPrice - aPrice;
-    }
-    
-    // 잔액 정렬
-    if (sortBy === 'balance') {
-      const aBalance = parseFloat(a.balanceUsd.replace(/[^\d.-]/g, ''));
-      const bBalance = parseFloat(b.balanceUsd.replace(/[^\d.-]/g, ''));
-      return direction === 'asc' ? aBalance - bBalance : bBalance - aBalance;
-    }
-    
-    // 포트폴리오 비율 정렬
-    if (sortBy === 'portfolioPercent') {
-      const aPercent = parseFloat(a.portfolioPercent.replace('%', ''));
-      const bPercent = parseFloat(b.portfolioPercent.replace('%', ''));
-      return direction === 'asc' ? aPercent - bPercent : bPercent - aPercent;
-    }
-    
-    return 0;
-  });
-};
-
-// 검색 함수
-const searchAssets = (
-  assets: Asset[],
-  query: string
-): Asset[] => {
-  if (!query) return assets;
-  
-  const lowercaseQuery = query.toLowerCase();
-  return assets.filter(asset => 
-    asset.name.toLowerCase().includes(lowercaseQuery) || 
-    asset.symbol.toLowerCase().includes(lowercaseQuery)
-  );
-};
+// API 호출 베이스 URL
+const API_BASE_URL = 'http://localhost:8080';
 
 // 스타일링된 컴포넌트
 const AssetAvatar = styled(Avatar)(({ theme }) => ({
@@ -180,6 +142,17 @@ const ActionButton = styled(Button)(({ theme }) => ({
   fontWeight: 600,
   textTransform: 'none',
   fontSize: '12px',
+}));
+
+const AddressChip = styled(Chip)(({ theme }) => ({
+  maxWidth: '180px',
+  fontFamily: 'monospace',
+  fontSize: '11px',
+  height: '24px',
+  '& .MuiChip-label': {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  }
 }));
 
 // 암호화폐 아이콘 컴포넌트
@@ -220,12 +193,10 @@ const CoinIcon = ({ symbol }: { symbol: string }) => {
   );
 };
 
-// API 호출 베이스 URL
-const API_BASE_URL = 'http://localhost:8080';
-
 export default function Wallet(props: { disableCustomTheme?: boolean }) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [wallets, setWallets] = useState<ApiWallet[]>([]);
+  const [addresses, setAddresses] = useState<ApiAddress[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -240,6 +211,10 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
     severity: 'info'
   });
   
+  useEffect(() => {
+    fetchAssets();
+  }, []);
+
   const open = Boolean(anchorEl);
 
   // 사용자의 지갑 데이터 가져오기
@@ -268,13 +243,82 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
     }
   };
 
+  // 주소 데이터 가져오기
+  const fetchAddresses = async (walletId: number) => {
+    try {
+      const response = await fetchWithAuth(`${API_BASE_URL}/api/addresses/wallet/${walletId}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch addresses: ${response.status}`);
+      }
+      
+      const addressData: ApiAddress[] = await response.json();
+      return addressData;
+    } catch (err) {
+      console.error(`Error fetching addresses for wallet ${walletId}:`, err);
+      return [];
+    }
+  };
+
+  // 잔액 데이터 가져오기
+  const fetchBalance = async (addressId: number, assetId: number) => {
+    try {
+      const response = await fetchWithAuth(`${API_BASE_URL}/api/balances/address/${addressId}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch balance: ${response.status}`);
+      }
+      
+      const balanceDataArray: ApiBalance[] = await response.json();
+      
+      if (balanceDataArray.length === 0) {
+        throw new Error(`No balance data found for address ID ${addressId}`);
+      }
+      
+      const matchingBalances = balanceDataArray.filter(bal => bal.astId === assetId);
+      
+      if (matchingBalances.length === 0) {
+        return null;
+      }
+      
+      return matchingBalances.reduce((latest, current) => {
+        if (current.credat > latest.credat) {
+          return current;
+        } else if (current.credat < latest.credat) {
+          return latest;
+        }
+        
+        if (current.cretim > latest.cretim) {
+          return current;
+        } else {
+          return latest;
+        }
+      });
+    } catch (err) {
+      console.error(`Error fetching balance for address ID ${addressId}:`, err);
+      return null;
+    }
+  };
+
+  // 모든 주소 데이터 가져오기
+  const fetchAllAddresses = async (wallets: ApiWallet[]) => {
+    const allAddresses: ApiAddress[] = [];
+    
+    for (const wallet of wallets) {
+      const addresses = await fetchAddresses(wallet.walNum);
+      allAddresses.push(...addresses);
+    }
+    
+    setAddresses(allAddresses);
+    return allAddresses;
+  };
+
   // API에서 자산 데이터 가져오기
   const fetchAssets = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      // 자산 API 호출
       const assetResponse = await fetch(`${API_BASE_URL}/api/assets`);
       
       if (!assetResponse.ok) {
@@ -283,15 +327,60 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
       
       const apiAssets: ApiAsset[] = await assetResponse.json();
       
-      // 지갑 데이터 가져오기
       const walletData = await fetchWallets();
       
-      // 자산 데이터 매핑
-      const mappedAssets = apiAssets.map(apiAsset => mapApiAssetToAsset(apiAsset, walletData));
+      const addressData = await fetchAllAddresses(walletData);
+      
+      const mappedAssets = await Promise.all(
+        apiAssets.map(async (apiAsset) => {
+          const relatedWallet = walletData.find(wallet => wallet.astId === apiAsset.astNum);
+          
+          const relatedAddress = relatedWallet 
+            ? addressData.find(address => address.walId === relatedWallet.walNum && address.astId === apiAsset.astNum)
+            : undefined;
+          
+          const asset: Asset = {
+            id: apiAsset.astNum,
+            name: apiAsset.astName,
+            symbol: apiAsset.astSymbol,
+            balance: `0 ${apiAsset.astSymbol}`,
+            balanceUsd: '$0.00 USD',
+            price: `${priceData[apiAsset.astSymbol]?.price || '$0.00'} USD`,
+            portfolioPercent: '0%',
+            type: apiAsset.astType,
+            network: apiAsset.astNetwork,
+            decimals: apiAsset.astDecimals,
+            walletId: relatedWallet?.walNum,
+            address: relatedAddress?.adrAddress,
+            addressId: relatedAddress?.adrNum,
+            addressType: relatedAddress?.adrType
+          };
+          
+          if (relatedAddress?.adrNum) {
+            try {
+              const balanceData = await fetchBalance(relatedAddress.adrNum, apiAsset.astNum);
+              
+              if (balanceData) {
+                const confirmedBalance = balanceData.balConfirmed;
+                const formattedBalance = formatCryptoBalance(confirmedBalance, apiAsset.astDecimals);
+                asset.balance = `${formattedBalance} ${apiAsset.astSymbol}`;
+                
+                const priceValue = parseFloat(priceData[apiAsset.astSymbol]?.price.replace('$', '').replace(',', '') || '0');
+                const balanceValue = confirmedBalance * priceValue / Math.pow(10, apiAsset.astDecimals);
+                asset.balanceUsd = `$${balanceValue.toFixed(2)} USD`;
+              }
+            } catch (err) {
+              console.error(`Error processing balance for ${apiAsset.astSymbol}:`, err);
+            }
+          }
+
+          return asset;
+        })
+      );
       
       setAssets(mappedAssets);
       
-      // 총 자산 가치 계산 (실제로는 더 복잡한 로직이 필요)
+      // 총 자산 가치 계산
       calculateTotalBalance(mappedAssets);
       
       if (refreshing) {
@@ -313,15 +402,37 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
 
   // 총 자산 가치 계산 함수
   const calculateTotalBalance = (assetList: Asset[]) => {
-    // 실제로는 각 자산의 USD 가치를 합산하는 로직이 필요
-    // 현재는 예시로 0으로 설정
-    setTotalBalance('$0.00 USD');
+    // 각 자산의 USD 가치를 합산
+    const total = assetList.reduce((sum, asset) => {
+      const balanceUsdValue = parseFloat(asset.balanceUsd.replace('$', '').replace(',', '').split(' ')[0] || '0');
+      return sum + balanceUsdValue;
+    }, 0);
+    
+    // 포트폴리오 비율 업데이트
+    const assetsWithPortfolioPercent = assetList.map(asset => {
+      const balanceUsdValue = parseFloat(asset.balanceUsd.replace('$', '').replace(',', '').split(' ')[0] || '0');
+      const percent = total > 0 ? (balanceUsdValue / total) * 100 : 0;
+      return {
+        ...asset,
+        portfolioPercent: `${percent.toFixed(1)}%`
+      };
+    });
+    
+    setAssets(assetsWithPortfolioPercent);
+    setTotalBalance(`$${total.toFixed(2)} USD`);
   };
 
-  // 컴포넌트 마운트 시 자산 데이터 로드
-  useEffect(() => {
-    fetchAssets();
-  }, []);
+  // 암호화폐 잔액을 적절한 소수점 형식으로 변환
+  const formatCryptoBalance = (balance: number, decimals: number) => {
+    // const value = balance / Math.pow(10, decimals);
+    // 
+    // if (value < 0.000001 && value > 0) {
+    //   return value.toFixed(decimals).replace(/\.?0+$/, '');
+    // }
+    // 
+    // const significantDecimals = Math.min(8, decimals); // 최대 8자리까지만 표시
+    return balance;
+  };
 
   // 새로고침 핸들러
   const handleRefresh = () => {
@@ -359,12 +470,72 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
     setSnackbar({...snackbar, open: false});
   };
   
+  // 정렬 함수
+  const sortAssetsList = (
+    assetsList: Asset[],
+    sortField: SortField,
+    direction: 'asc' | 'desc'
+  ): Asset[] => {
+    return [...assetsList].sort((a, b) => {
+      if (sortField === 'name') {
+        return direction === 'asc' 
+          ? a.name.localeCompare(b.name) 
+          : b.name.localeCompare(a.name);
+      }
+      
+      if (sortField === 'price') {
+        const aPrice = parseFloat(a.price.replace(/[^\d.-]/g, ''));
+        const bPrice = parseFloat(b.price.replace(/[^\d.-]/g, ''));
+        return direction === 'asc' ? aPrice - bPrice : bPrice - aPrice;
+      }
+      
+      if (sortField === 'balance') {
+        const aBalance = parseFloat(a.balanceUsd.replace(/[^\d.-]/g, ''));
+        const bBalance = parseFloat(b.balanceUsd.replace(/[^\d.-]/g, ''));
+        return direction === 'asc' ? aBalance - bBalance : bBalance - aBalance;
+      }
+      
+      if (sortField === 'portfolioPercent') {
+        const aPercent = parseFloat(a.portfolioPercent.replace('%', ''));
+        const bPercent = parseFloat(b.portfolioPercent.replace('%', ''));
+        return direction === 'asc' ? aPercent - bPercent : bPercent - aPercent;
+      }
+      
+      return 0;
+    });
+  };
+  
+  // 검색 함수
+  const searchAssetsList = (
+    assetsList: Asset[],
+    query: string
+  ): Asset[] => {
+    if (!query) return assetsList;
+    
+    const lowercaseQuery = query.toLowerCase();
+    return assetsList.filter(asset => 
+      asset.name.toLowerCase().includes(lowercaseQuery) || 
+      asset.symbol.toLowerCase().includes(lowercaseQuery) ||
+      (asset.address && asset.address.toLowerCase().includes(lowercaseQuery))
+    );
+  };
+  
   // 검색 및 정렬이 적용된 자산 목록
-  const filteredAssets = sortAssets(
-    searchAssets(assets, searchTerm),
+  const filteredAssets = sortAssetsList(
+    searchAssetsList(assets, searchTerm),
     sortBy,
     sortDirection
   );
+
+  // 주소 복사 핸들러
+  const handleCopyAddress = (address: string) => {
+    navigator.clipboard.writeText(address);
+    setSnackbar({
+      open: true,
+      message: '주소가 클립보드에 복사되었습니다.',
+      severity: 'success'
+    });
+  };
 
   // 자산 생성 핸들러
   const handleCreateWallet = () => {
@@ -455,18 +626,15 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
               }}
             />
             
-            {/* 모든 자산 표시 버튼 */}
-            <Chip 
-              label="Show All Assets" 
-              variant="outlined"
+            {/* 새로고침 버튼 */}
+            <IconButton
+              color="primary"
               onClick={handleRefresh}
-              sx={{ 
-                borderRadius: '8px',
-                fontWeight: 500,
-                fontSize: '13px',
-                height: '38px',
-              }}
-            />
+              disabled={loading || refreshing}
+              sx={{ height: '38px', width: '38px' }}
+            >
+              <RefreshIcon />
+            </IconButton>
             
             {/* 정렬 드롭다운 */}
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -540,13 +708,14 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
                   <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Balance</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Price</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Portfolio %</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Address</TableCell>
                   <TableCell sx={{ width: '200px' }}></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filteredAssets.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                       <Typography variant="body1" color="text.secondary">
                         {searchTerm ? '검색 결과가 없습니다.' : '자산이 없습니다.'}
                       </Typography>
@@ -573,7 +742,7 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
                               {asset.name}
                             </Typography>
                             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                              {asset.symbol}
+                              {asset.symbol} • {asset.network}
                             </Typography>
                           </Box>
                         </Box>
@@ -594,6 +763,18 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
                         <Typography variant="body2" sx={{ fontWeight: 500 }}>
                           {asset.price}
                         </Typography>
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            color: priceData[asset.symbol]?.change24h.includes('+') 
+                              ? green[600]
+                              : priceData[asset.symbol]?.change24h.includes('-')
+                                ? red[600]
+                                : 'text.secondary'
+                          }}
+                        >
+                          {priceData[asset.symbol]?.change24h || '0.0%'} (24h)
+                        </Typography>
                       </TableCell>
                       
                       {/* 포트폴리오 비율 */}
@@ -603,20 +784,50 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
                         </Typography>
                       </TableCell>
                       
+                      {/* 주소 정보 */}
+                      <TableCell>
+                        {asset.address ? (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <AddressChip
+                              label={asset.address}
+                              variant="outlined"
+                              size="small"
+                            />
+                            <Tooltip title="주소 복사">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleCopyAddress(asset.address || '')}
+                              >
+                                <ContentCopyIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        ) : (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              연결된 주소 없음
+                            </Typography>
+                            <Tooltip title="먼저 지갑을 생성해야 합니다">
+                              <InfoOutlinedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                            </Tooltip>
+                          </Box>
+                        )}
+                      </TableCell>
+                      
                       {/* 액션 버튼 */}
                       <TableCell align="right">
                         <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                           <ActionButton 
                             variant="outlined" 
-                            startIcon={<ArrowDropDownIcon />}
                             onClick={() => handleDeposit(asset)}
+                            disabled={!asset.address}
                           >
                             Deposit
                           </ActionButton>
                           <ActionButton 
                             variant="outlined" 
-                            startIcon={<ArrowDropDownIcon />}
                             onClick={() => handleWithdraw(asset)}
+                            disabled={!asset.address || asset.balance === `0 ${asset.symbol}`}
                           >
                             Withdraw
                           </ActionButton>
