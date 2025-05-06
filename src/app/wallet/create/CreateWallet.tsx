@@ -17,9 +17,6 @@ import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Radio from '@mui/material/Radio';
-import RadioGroup from '@mui/material/RadioGroup';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import FormLabel from '@mui/material/FormLabel';
 import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
@@ -31,15 +28,13 @@ import IconButton from '@mui/material/IconButton';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import FormHelperText from '@mui/material/FormHelperText';
 
-// 아이콘
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 import AppTheme from '@/theme/AppTheme';
 import AppAppBar from '@/components/AppAppBar';
-import { brand, gray } from '@/theme/themePrimitives';
+import { brand } from '@/theme/themePrimitives';
 import { fetchWithAuth, getUserId } from '@/lib/auth';
 
 // API 응답 타입 정의
@@ -296,8 +291,6 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
         const errorData = await response.json();
         throw new Error(errorData.message || `Failed to create wallet: ${response.status}`);
       }
-      
-      const responseData = await response.json();
       
       // 성공 시 처리
       setSnackbar({

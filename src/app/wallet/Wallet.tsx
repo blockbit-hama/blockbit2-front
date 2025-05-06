@@ -18,23 +18,18 @@ import Paper from '@mui/material/Paper';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import Avatar from '@mui/material/Avatar';
-import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
-import Tooltip from '@mui/material/Tooltip';
 
-// 아이콘
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import AddIcon from '@mui/icons-material/Add';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 import AppTheme from '@/theme/AppTheme';
 import AppAppBar from '@/components/AppAppBar';
@@ -104,10 +99,7 @@ interface Asset {
   type?: string;
   network?: string;
   decimals?: number;
-  walletId?: number;
-  address?: string;
-  addressId?: number;
-  addressType?: string;
+  wallets?: ApiWallet[]; // 자산에 연결된 지갑 배열로 변경
 }
 
 // 정렬 필드 타입
@@ -127,7 +119,7 @@ const priceData: Record<string, {price: string, change24h: string}> = {
 const API_BASE_URL = 'http://localhost:8080';
 
 // 스타일링된 컴포넌트
-const AssetAvatar = styled(Avatar)(({ theme }) => ({
+const AssetAvatar = styled(Avatar)(() => ({
   width: 32,
   height: 32,
   backgroundColor: brand[100],
@@ -142,17 +134,6 @@ const ActionButton = styled(Button)(({ theme }) => ({
   fontWeight: 600,
   textTransform: 'none',
   fontSize: '12px',
-}));
-
-const AddressChip = styled(Chip)(({ theme }) => ({
-  maxWidth: '180px',
-  fontFamily: 'monospace',
-  fontSize: '11px',
-  height: '24px',
-  '& .MuiChip-label': {
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  }
 }));
 
 // 암호화폐 아이콘 컴포넌트
@@ -196,7 +177,6 @@ const CoinIcon = ({ symbol }: { symbol: string }) => {
 export default function Wallet(props: { disableCustomTheme?: boolean }) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [wallets, setWallets] = useState<ApiWallet[]>([]);
-  const [addresses, setAddresses] = useState<ApiAddress[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -300,25 +280,13 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
     }
   };
 
-  // 모든 주소 데이터 가져오기
-  const fetchAllAddresses = async (wallets: ApiWallet[]) => {
-    const allAddresses: ApiAddress[] = [];
-    
-    for (const wallet of wallets) {
-      const addresses = await fetchAddresses(wallet.walNum);
-      allAddresses.push(...addresses);
-    }
-    
-    setAddresses(allAddresses);
-    return allAddresses;
-  };
-
   // API에서 자산 데이터 가져오기
   const fetchAssets = async () => {
     setLoading(true);
     setError(null);
     
     try {
+      // 자산 API 호출
       const assetResponse = await fetch(`${API_BASE_URL}/api/assets`);
       
       if (!assetResponse.ok) {
@@ -327,18 +295,21 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
       
       const apiAssets: ApiAsset[] = await assetResponse.json();
       
+      // 지갑 데이터 가져오기
       const walletData = await fetchWallets();
       
-      const addressData = await fetchAllAddresses(walletData);
+      // 주소 데이터 가져오기 - 모든 지갑의 주소를 불러옴
+      const addressesPromises = walletData.map(wallet => fetchAddresses(wallet.walNum));
+      const addressesResults = await Promise.all(addressesPromises);
+      const allAddresses = addressesResults.flat();
       
+      // 자산 정보 매핑 및 계산
       const mappedAssets = await Promise.all(
         apiAssets.map(async (apiAsset) => {
-          const relatedWallet = walletData.find(wallet => wallet.astId === apiAsset.astNum);
+          // 이 자산과 관련된 모든 지갑 찾기 (1:N)
+          const relatedWallets = walletData.filter(wallet => wallet.astId === apiAsset.astNum);
           
-          const relatedAddress = relatedWallet 
-            ? addressData.find(address => address.walId === relatedWallet.walNum && address.astId === apiAsset.astNum)
-            : undefined;
-          
+          // 기본 자산 정보 설정
           const asset: Asset = {
             id: apiAsset.astNum,
             name: apiAsset.astName,
@@ -350,30 +321,45 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
             type: apiAsset.astType,
             network: apiAsset.astNetwork,
             decimals: apiAsset.astDecimals,
-            walletId: relatedWallet?.walNum,
-            address: relatedAddress?.adrAddress,
-            addressId: relatedAddress?.adrNum,
-            addressType: relatedAddress?.adrType
+            wallets: relatedWallets
           };
           
-          if (relatedAddress?.adrNum) {
-            try {
-              const balanceData = await fetchBalance(relatedAddress.adrNum, apiAsset.astNum);
+          // 잔액 계산
+          if (relatedWallets.length > 0) {
+            // 이 자산에 관련된 모든 주소 찾기
+            const relatedAddresses = allAddresses.filter(addr => {
+              // 자산 ID가 일치하고 이 자산과 관련된 지갑에 속하는 주소인지 확인
+              return addr.astId === apiAsset.astNum && relatedWallets.some(wallet => wallet.walNum === addr.walId);
+            });
+            
+            if (relatedAddresses.length > 0) {
+              // 모든 주소의 잔액 데이터를 가져와서 합산
+              let totalConfirmedBalance = 0;
+              let totalUsdValue = 0;
               
-              if (balanceData) {
-                const confirmedBalance = balanceData.balConfirmed;
-                const formattedBalance = formatCryptoBalance(confirmedBalance, apiAsset.astDecimals);
-                asset.balance = `${formattedBalance} ${apiAsset.astSymbol}`;
-                
-                const priceValue = parseFloat(priceData[apiAsset.astSymbol]?.price.replace('$', '').replace(',', '') || '0');
-                const balanceValue = confirmedBalance * priceValue / Math.pow(10, apiAsset.astDecimals);
-                asset.balanceUsd = `$${balanceValue.toFixed(2)} USD`;
-              }
-            } catch (err) {
-              console.error(`Error processing balance for ${apiAsset.astSymbol}:`, err);
+              // 각 주소에 대한 잔액 가져오기
+              const balancePromises = relatedAddresses.map(addr => fetchBalance(addr.adrNum, apiAsset.astNum));
+              const balanceResults = await Promise.all(balancePromises);
+              
+              // 잔액 합산
+              balanceResults.forEach(balanceData => {
+                if (balanceData) {
+                  totalConfirmedBalance += balanceData.balConfirmed;
+                  
+                  // USD 가치 계산
+                  const priceValue = parseFloat(priceData[apiAsset.astSymbol]?.price.replace('$', '').replace(',', '') || '0');
+                  const balanceValue = balanceData.balConfirmed * priceValue / Math.pow(10, apiAsset.astDecimals);
+                  totalUsdValue += balanceValue;
+                }
+              });
+              
+              // 포맷팅된 잔액 설정
+              const formattedBalance = totalConfirmedBalance.toString();
+              asset.balance = `${formattedBalance} ${apiAsset.astSymbol}`;
+              asset.balanceUsd = `$${totalUsdValue.toFixed(2)} USD`;
             }
           }
-
+          
           return asset;
         })
       );
@@ -420,18 +406,6 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
     
     setAssets(assetsWithPortfolioPercent);
     setTotalBalance(`$${total.toFixed(2)} USD`);
-  };
-
-  // 암호화폐 잔액을 적절한 소수점 형식으로 변환
-  const formatCryptoBalance = (balance: number, decimals: number) => {
-    // const value = balance / Math.pow(10, decimals);
-    // 
-    // if (value < 0.000001 && value > 0) {
-    //   return value.toFixed(decimals).replace(/\.?0+$/, '');
-    // }
-    // 
-    // const significantDecimals = Math.min(8, decimals); // 최대 8자리까지만 표시
-    return balance;
   };
 
   // 새로고침 핸들러
@@ -504,19 +478,18 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
       return 0;
     });
   };
-  
+
   // 검색 함수
   const searchAssetsList = (
-    assetsList: Asset[],
-    query: string
+      assetsList: Asset[],
+      query: string
   ): Asset[] => {
     if (!query) return assetsList;
-    
+
     const lowercaseQuery = query.toLowerCase();
-    return assetsList.filter(asset => 
-      asset.name.toLowerCase().includes(lowercaseQuery) || 
-      asset.symbol.toLowerCase().includes(lowercaseQuery) ||
-      (asset.address && asset.address.toLowerCase().includes(lowercaseQuery))
+    return assetsList.filter(asset =>
+        asset.name.toLowerCase().includes(lowercaseQuery) ||
+        asset.symbol.toLowerCase().includes(lowercaseQuery)
     );
   };
   
@@ -527,15 +500,7 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
     sortDirection
   );
 
-  // 주소 복사 핸들러
-  const handleCopyAddress = (address: string) => {
-    navigator.clipboard.writeText(address);
-    setSnackbar({
-      open: true,
-      message: '주소가 클립보드에 복사되었습니다.',
-      severity: 'success'
-    });
-  };
+  // 주소 복사 핸들러 제거 (사용되지 않음)
 
   // 자산 생성 핸들러
   const handleCreateWallet = () => {
@@ -704,7 +669,6 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
                   <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Balance</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Price</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Portfolio %</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Address</TableCell>
                   <TableCell sx={{ width: '200px' }}></TableCell>
                 </TableRow>
               </TableHead>
@@ -780,50 +744,19 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
                         </Typography>
                       </TableCell>
                       
-                      {/* 주소 정보 */}
-                      <TableCell>
-                        {asset.address ? (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <AddressChip
-                              label={asset.address}
-                              variant="outlined"
-                              size="small"
-                            />
-                            <Tooltip title="주소 복사">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleCopyAddress(asset.address || '')}
-                              >
-                                <ContentCopyIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        ) : (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="caption" color="text.secondary">
-                              연결된 주소 없음
-                            </Typography>
-                            <Tooltip title="먼저 지갑을 생성해야 합니다">
-                              <InfoOutlinedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                            </Tooltip>
-                          </Box>
-                        )}
-                      </TableCell>
-                      
                       {/* 액션 버튼 */}
                       <TableCell align="right">
                         <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                           <ActionButton 
                             variant="outlined" 
                             onClick={() => handleDeposit(asset)}
-                            disabled={!asset.address}
                           >
                             Deposit
                           </ActionButton>
                           <ActionButton 
                             variant="outlined" 
                             onClick={() => handleWithdraw(asset)}
-                            disabled={!asset.address || asset.balance === `0 ${asset.symbol}`}
+                            disabled={asset.balance === `0 ${asset.symbol}`}
                           >
                             Withdraw
                           </ActionButton>
