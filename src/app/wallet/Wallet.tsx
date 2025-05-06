@@ -539,12 +539,8 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
 
   // 자산 생성 핸들러
   const handleCreateWallet = () => {
-    // 실제로는 지갑 생성 모달 또는 페이지로 이동
-    setSnackbar({
-      open: true,
-      message: '지갑 생성 기능은 준비 중입니다.',
-      severity: 'info'
-    });
+    // 지갑 생성 페이지로 이동
+    window.location.href = '/wallet/create';
   };
 
   // 입금 처리 핸들러
