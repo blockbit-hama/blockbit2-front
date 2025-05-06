@@ -353,7 +353,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-            지갑 생성
+            Wallet Create
           </Typography>
         </Box>
         
@@ -374,17 +374,17 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
             <Card sx={{ mb: 4 }}>
               <CardContent>
                 <Typography variant="h5" component="h2" sx={{ mb: 3, fontWeight: 600 }}>
-                  지갑 세부 정보
+                  Wallet Details
                 </Typography>
                 
                 {/* 지갑 이름 */}
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500 }}>
-                    이름
+                    Name
                   </Typography>
                   <TextField
                     fullWidth
-                    placeholder="YS Test3"
+                    placeholder="Example: Mike's BTC Wallet"
                     value={walletName}
                     onChange={handleWalletNameChange}
                     error={!!walletNameError}
@@ -396,7 +396,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
                 {/* 자산 선택 */}
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500 }}>
-                    자산
+                    Asset
                   </Typography>
                   <FormControl fullWidth error={!!assetError}>
                     <Select
@@ -406,7 +406,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
                       disabled={submitting}
                       renderValue={(selected) => {
                         if (!selected) {
-                          return <Typography color="text.secondary">자산 선택</Typography>;
+                          return <Typography color="text.secondary">Type</Typography>;
                         }
                         
                         const asset = assets.find(a => a.astNum === selected);
@@ -472,11 +472,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
                 {/* 지갑 유형 */}
                 <Box>
                   <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500 }}>
-                    지갑 유형
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-                    자산에 따라 지갑 유형 가용성이 다릅니다.
-                    <InfoOutlinedIcon fontSize="small" sx={{ ml: 0.5 }} />
+                    Wallet Type
                   </Typography>
                   
                   {walletTypes.map((type) => (
@@ -511,12 +507,12 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
                   <Box sx={{ mt: 3 }}>
                     <Divider sx={{ mb: 3 }} />
                     <Typography variant="subtitle1" sx={{ mb: 3, fontWeight: 500 }}>
-                      지갑 비밀번호
+                      Wallet Password
                     </Typography>
                     
                     <Box sx={{ mb: 3 }}>
                       <FormControl fullWidth variant="outlined" error={!!passwordError}>
-                        <InputLabel htmlFor="wallet-password">비밀번호</InputLabel>
+                        <InputLabel htmlFor="wallet-password">Password</InputLabel>
                         <OutlinedInput
                           id="wallet-password"
                           type={showPassword ? 'text' : 'password'}
@@ -533,7 +529,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
                               </IconButton>
                             </InputAdornment>
                           }
-                          label="비밀번호"
+                          label="Password"
                         />
                         {passwordError && <FormHelperText>{passwordError}</FormHelperText>}
                       </FormControl>
@@ -541,7 +537,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
                     
                     <Box sx={{ mb: 3 }}>
                       <FormControl fullWidth variant="outlined" error={!!passwordConfirmError}>
-                        <InputLabel htmlFor="wallet-password-confirm">비밀번호 확인</InputLabel>
+                        <InputLabel htmlFor="wallet-password-confirm">Password Check</InputLabel>
                         <OutlinedInput
                           id="wallet-password-confirm"
                           type={showPassword ? 'text' : 'password'}
@@ -558,15 +554,11 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
                               </IconButton>
                             </InputAdornment>
                           }
-                          label="비밀번호 확인"
+                          label="Password Check"
                         />
                         {passwordConfirmError && <FormHelperText>{passwordConfirmError}</FormHelperText>}
                       </FormControl>
                     </Box>
-                    
-                    <Typography variant="body2" color="text.secondary">
-                      이 비밀번호는 지갑 거래에 서명하는 데 사용됩니다. 안전하게 보관하세요.
-                    </Typography>
                   </Box>
                 )}
               </CardContent>
@@ -579,7 +571,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
                 onClick={() => router.back()}
                 disabled={submitting}
               >
-                취소
+                Cancel
               </Button>
               <Button
                 type="submit"
@@ -587,7 +579,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
                 disabled={submitting}
                 endIcon={submitting ? <CircularProgress size={20} /> : undefined}
               >
-                {submitting ? '처리 중...' : '지갑 생성'}
+                {submitting ? 'Submitting..' : 'Create'}
               </Button>
             </Box>
           </form>
