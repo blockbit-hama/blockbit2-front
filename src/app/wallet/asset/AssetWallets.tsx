@@ -564,12 +564,14 @@ export default function AssetWallets(props: { disableCustomTheme?: boolean }) {
                     <TableRow
                       key={wallet.walNum}
                       sx={{ 
+                        cursor: 'pointer',
                         '&:hover': { 
                           backgroundColor: (theme) => 
                             theme.palette.mode === 'dark' ? gray[800] : gray[50] 
                         },
                         '& td': { py: 2 } 
                       }}
+                      onClick={() => router.push(`/wallet/detail?id=${wallet.walNum}&symbol=${assetSymbol}`)}
                     >
                       {/* 지갑 정보 */}
                       <TableCell>
