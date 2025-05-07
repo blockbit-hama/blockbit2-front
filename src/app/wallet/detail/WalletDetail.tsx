@@ -28,6 +28,13 @@ import CardContent from '@mui/material/CardContent';
 import IconButton from '@mui/material/IconButton';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import OutlinedInput from '@mui/material/OutlinedInput';
 
 import EditIcon from '@mui/icons-material/Edit';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -193,6 +200,79 @@ function a11yProps(index: number) {
   };
 }
 
+// 인터페이스 추가
+interface TransactionDialogProps {
+  open: boolean;
+  type: 'deposit' | 'withdraw';
+  onClose: () => void;
+  onSubmit: (amount: number, memo: string) => void;
+  symbol: string;
+}
+
+// 트랜잭션 다이얼로그 컴포넌트
+const TransactionDialog = ({ open, type, onClose, onSubmit, symbol }: TransactionDialogProps) => {
+  const [amount, setAmount] = useState<string>('');
+  const [memo, setMemo] = useState<string>('');
+
+  const handleSubmit = () => {
+    onSubmit(Number(amount), memo);
+    setAmount('');
+    setMemo('');
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>{type === 'deposit' ? 'Deposit' : 'Withdraw'} {symbol}</DialogTitle>
+      <DialogContent>
+        <FormControl fullWidth sx={{ mt: 2 }}>
+          <InputLabel>Amount</InputLabel>
+          <OutlinedInput
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            endAdornment={<InputAdornment position="end">{symbol}</InputAdornment>}
+            label="Amount"
+          />
+        </FormControl>
+        <FormControl fullWidth sx={{ mt: 2 }}>
+          <InputLabel>Memo</InputLabel>
+          <OutlinedInput
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            label="Memo"
+            multiline
+            rows={2}
+          />
+        </FormControl>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button 
+          onClick={handleSubmit} 
+          variant="contained"
+          disabled={!amount || Number(amount) <= 0}
+        >
+          Confirm {type === 'deposit' ? 'Deposit' : 'Withdraw'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+/**
+ * 트랜잭션 해시 생성 함수
+ * @returns 0x로 시작하는 64자리 16진수 문자열
+ */
+const generateTransactionHash = (): string => {
+  // 32바이트(64자) 랜덤 16진수 문자열 생성
+  const randomHex = Array.from(
+    { length: 64 },
+    () => Math.floor(Math.random() * 16).toString(16)
+  ).join('');
+  
+  return `0x${randomHex}`;
+};
+
 export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -204,6 +284,13 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [transactionDialog, setTransactionDialog] = useState<{
+    open: boolean;
+    type: 'deposit' | 'withdraw';
+  }>({
+    open: false,
+    type: 'deposit'
+  });
   
   // Get wallet data
   useEffect(() => {
@@ -360,14 +447,103 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
     navigator.clipboard.writeText(text);
   };
 
-  // 입금 처리 핸들러
-  const handleDeposit = () => {
-    console.log('Deposit processing');
+  // 트랜잭션 처리 함수
+  const handleTransaction = async (amount: number, memo: string) => {
+    try {
+      // 1. 트랜잭션 생성
+      const trxHash = generateTransactionHash();
+      const transactionResponse = await fetchWithAuth(
+        `${API_BASE_URL}/api/transactions`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            trxHash,
+            trxType: transactionDialog.type,
+            trxAmount: amount,
+            trxFee: 0.0001,
+            trxStatus: 'pending',
+            trxMemo: memo,
+            walId: Number(walletId),
+            astId: walletData?.asset?.astNum
+          })
+        }
+      );
+
+      if (!transactionResponse.ok) {
+        throw new Error('Failed to create transaction');
+      }
+
+      const transactionData = await transactionResponse.json();
+
+      // 2. 승인 기록 생성
+      const approvalResponse = await fetchWithAuth(
+        `${API_BASE_URL}/api/approvals`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            trxId: transactionData.trxNum,
+            usiNum: 1, // 현재 로그인한 사용자 ID
+            aprStatus: 'pending',
+            aprComment: `${transactionDialog.type} approval request`
+          })
+        }
+      );
+
+      if (!approvalResponse.ok) {
+        throw new Error('Failed to create approval');
+      }
+
+      // 3. 잔액 기록 생성
+      const balanceResponse = await fetchWithAuth(
+        `${API_BASE_URL}/api/balances`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            adrId: walletData?.addresses[0]?.adrNum,
+            astId: walletData?.asset?.astNum,
+            balBefore: walletData?.balance || 0,
+            balAfter: transactionDialog.type === 'deposit' 
+              ? (walletData?.balance || 0) + amount
+              : (walletData?.balance || 0) - amount,
+            balConfirmed: transactionDialog.type === 'deposit' 
+              ? (walletData?.balance || 0) + amount
+              : (walletData?.balance || 0) - amount,
+            balPending: 0
+          })
+        }
+      );
+
+      if (!balanceResponse.ok) {
+        throw new Error('Failed to update balance');
+      }
+
+      // 성공 처리
+      setTransactionDialog({ ...transactionDialog, open: false });
+      // 지갑 데이터 새로고침
+      fetchWalletData(Number(walletId));
+
+    } catch (error) {
+      console.error('Transaction failed:', error);
+      setError('Failed to process transaction. Please try again.');
+    }
   };
 
-  // Withdrawal handler
+  // 버튼 클릭 핸들러 수정
+  const handleDeposit = () => {
+    setTransactionDialog({ type: 'deposit', open: true });
+  };
+
   const handleWithdraw = () => {
-    console.log('Withdrawal processing');
+    setTransactionDialog({ type: 'withdraw', open: true });
   };
 
   return (
@@ -768,6 +944,15 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
           <Alert severity="error">
             Wallet information not found.
           </Alert>
+        )}
+        {walletData && (
+          <TransactionDialog
+            open={transactionDialog.open}
+            type={transactionDialog.type}
+            onClose={() => setTransactionDialog({ ...transactionDialog, open: false })}
+            onSubmit={handleTransaction}
+            symbol={walletData.asset?.astSymbol || 'BTC'}
+          />
         )}
       </Container>
     </AppTheme>
