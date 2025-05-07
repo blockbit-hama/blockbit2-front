@@ -42,6 +42,7 @@ import { fetchWithAuth, getUserId } from '@/lib/auth';
 import { getWalletsByAsset, Wallet } from '@/services/walletService';
 import { getAssetBySymbol, getAssetById } from '@/services/assetService';
 import { fetchAddresses } from '@/services/addressService';
+import { getWalletsByUser } from '@/services/walletService';
 
 // API 호출 베이스 URL
 const API_BASE_URL = 'http://localhost:8080';
@@ -188,17 +189,27 @@ export default function AssetWallets(props: { disableCustomTheme?: boolean }) {
     setError(null);
     
     try {
-      // 자산 정보 가져오기
+      // 1. 현재 로그인한 사용자 ID 가져오기
+      const userId = getUserId();
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      // 2. 자산 정보 가져오기
       const asset = await getAssetBySymbol(assetSymbol);
-      
       if (!asset) {
         throw new Error(`Asset with symbol ${assetSymbol} not found`);
       }
+
+      // 3. 사용자의 지갑 목록 가져오기
+      const userWallets = await getWalletsByUser(userId);
       
-      // 해당 자산의 지갑 목록 가져오기
-      const walletsData = await getWalletsByAsset(asset.astNum || 0);
-      
-      // 각 지갑의 잔액 가져오기
+      // 4. 현재 자산에 해당하는 지갑만 필터링
+      const walletsData = userWallets.filter(wallet => 
+        wallet.astId === asset.astNum
+      );
+
+      // 5. 각 지갑의 잔액 정보 가져오기
       const walletsWithBalance = await Promise.all(
         walletsData.map(async (wallet) => {
           // 지갑에 연결된 주소 목록 가져오기
@@ -210,7 +221,9 @@ export default function AssetWallets(props: { disableCustomTheme?: boolean }) {
           
           if (addresses.length > 0) {
             // 각 주소에 대한 잔액 가져오기
-            const balancePromises = addresses.map(addr => fetchBalance(addr.adrNum, asset.astNum || 0));
+            const balancePromises = addresses.map(addr => 
+              fetchBalance(addr.adrNum || 0, asset.astNum || 0)
+            );
             const balanceResults = await Promise.all(balancePromises);
             
             // 잔액 합산
@@ -219,8 +232,11 @@ export default function AssetWallets(props: { disableCustomTheme?: boolean }) {
                 totalConfirmedBalance += balanceData.balConfirmed;
                 
                 // USD 가치 계산
-                const priceValue = parseFloat(priceData[assetSymbol]?.price.replace('$', '').replace(',', '') || '0');
-                const balanceValue = balanceData.balConfirmed * priceValue / Math.pow(10, asset.astDecimals || 0);
+                const priceValue = parseFloat(
+                  priceData[assetSymbol]?.price.replace('$', '').replace(',', '') || '0'
+                );
+                const balanceValue = balanceData.balConfirmed * priceValue / 
+                  Math.pow(10, asset.astDecimals || 0);
                 totalUsdValue += balanceValue;
               }
             });
