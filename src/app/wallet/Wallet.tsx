@@ -695,10 +695,24 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
                     >
                       {/* 자산 정보 */}
                       <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box 
+                          sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 2,
+                            cursor: 'pointer', // 포인터 커서 추가
+                            '&:hover': { 
+                              '& .asset-name': { 
+                                color: 'primary.main',
+                                textDecoration: 'underline'
+                              }
+                            }
+                          }}
+                          onClick={() => window.location.href = `/wallet/asset?symbol=${asset.symbol}&name=${encodeURIComponent(asset.name)}`}
+                        >
                           <CoinIcon symbol={asset.symbol} />
                           <Box>
-                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }} className="asset-name">
                               {asset.name}
                             </Typography>
                             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
