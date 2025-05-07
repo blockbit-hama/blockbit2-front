@@ -32,6 +32,7 @@ import { useRouter } from 'next/navigation';
 import { getUserId } from '@/lib/auth';
 import { createWallet } from '@/services/walletService';
 import { getAssetIdByType } from '@/services/assetService';
+import { createAddress } from '@/services/addressService';
 
 // 서명 프로토콜 카드 컴포넌트 스타일링
 const ProtocolCard = styled(Card)(({ theme }) => ({
@@ -158,6 +159,59 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
 
+  // 주소 생성을 위한 함수
+  const generateAddressForWallet = (asset: string, walletType: string): { address: string, path: string } => {
+    let prefix = '';
+    let derivationPath = '';
+    
+    // 자산 유형에 따른 주소 형식 및 prefix 설정
+    switch (asset) {
+      case 'Bitcoin':
+        prefix = 'bc1q';
+        derivationPath = 'm/84\'/0\'/0\'/0/0';
+        break;
+      case 'Ethereum':
+      case 'ERC-20':
+        prefix = '0x';
+        derivationPath = 'm/44\'/60\'/0\'/0/0';
+        break;
+      case 'Bitcoin Cash':
+        prefix = 'bitcoincash:q';
+        derivationPath = 'm/44\'/145\'/0\'/0/0';
+        break;
+      case 'Litecoin':
+        prefix = 'ltc1q';
+        derivationPath = 'm/84\'/2\'/0\'/0/0';
+        break;
+      case 'Ripple':
+        prefix = 'r';
+        derivationPath = 'm/44\'/144\'/0\'/0/0';
+        break;
+      default:
+        prefix = '0x';
+        derivationPath = 'm/44\'/0\'/0\'/0/0';
+    }
+    
+    // 랜덤 문자열 생성 (시뮬레이션)
+    const randomChars = Array.from({ length: 30 }, () => {
+      const chars = '0123456789abcdefghijklmnopqrstuvwxyz';
+      return chars[Math.floor(Math.random() * chars.length)];
+    }).join('');
+    
+    let address = prefix + randomChars;
+    
+    // 자산 유형별 최대 길이 조정
+    if (asset === 'Bitcoin' || asset === 'Litecoin') {
+      address = address.substring(0, 42); // 비트코인/라이트코인 주소 길이 제한
+    } else if (asset === 'Ethereum' || asset === 'ERC-20') {
+      address = address.substring(0, 42); // 이더리움 주소는 42자 (0x 포함)
+    } else if (asset === 'Ripple') {
+      address = address.substring(0, 34); // 리플 주소 길이 제한
+    }
+    
+    return { address, path: derivationPath };
+  };
+
   // 지갑 생성 API 호출
   const handleCreateWallet = async () => {
     setLoading(true);
@@ -174,7 +228,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
       const assetId = getAssetIdByType(assetType);
       
       // 지갑 생성 API 호출
-      const response = await createWallet({
+      const walletResponse = await createWallet({
         walName: walletName,
         walType: walletType,
         walProtocol: selectedProtocol,
@@ -184,6 +238,23 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
         astId: assetId,
         polId: 1 // 정책 ID는 일단 1로 고정
       });
+      
+      // 지갑 생성 성공하면 주소 생성
+      if (walletResponse && walletResponse.walNum) {
+        // 주소 자동 생성
+        const { address, path } = generateAddressForWallet(assetType, walletType);
+        const addressLabel = `${assetType} ${walletType} Wallet Main Address`;
+        
+        // 주소 생성 API 호출
+        await createAddress({
+          adrAddress: address,
+          adrLabel: addressLabel,
+          adrType: 'receive', // 기본 receive 타입으로 설정
+          adrPath: path,
+          walId: walletResponse.walNum,
+          astId: assetId
+        });
+      }
       
       // 지갑 생성 성공 시 지갑 목록 페이지로 이동
       router.push('/wallet');
@@ -377,6 +448,10 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
           </Box>
         );
       case 3:
+        // 주소 미리보기 정보 생성
+        const { address, path } = generateAddressForWallet(assetType, walletType);
+        const addressLabel = `${assetType} ${walletType} Wallet Main Address`;
+        
         return (
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6" gutterBottom>
@@ -397,7 +472,13 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
               <Typography variant="body1" paragraph>{assetType}</Typography>
               
               <Typography variant="subtitle2">서명 프로토콜:</Typography>
-              <Typography variant="body1">{selectedProtocol}</Typography>
+              <Typography variant="body1" paragraph>{selectedProtocol}</Typography>
+              
+              <Typography variant="subtitle2">새 주소 (자동 생성):</Typography>
+              <Typography variant="body2" sx={{ wordBreak: 'break-all', mb: 1 }}>{address}</Typography>
+              
+              <Typography variant="subtitle2">주소 라벨:</Typography>
+              <Typography variant="body1">{addressLabel}</Typography>
             </Box>
             
             <Alert severity="warning">

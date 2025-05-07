@@ -252,7 +252,7 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
       const balanceDataArray: ApiBalance[] = await response.json();
       
       if (balanceDataArray.length === 0) {
-        throw new Error(`No balance data found for address ID ${addressId}`);
+        return null;
       }
       
       const matchingBalances = balanceDataArray.filter(bal => bal.astId === assetId);
