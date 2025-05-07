@@ -1,9 +1,9 @@
 // src/services/walletService.ts
-// 지갑 관련 API 요청을 처리하는 서비스
+// Service for handling wallet-related API requests
 
 import { apiGet, apiPost, apiPut, apiDelete } from './apiService';
 
-// 지갑 인터페이스
+// Wallet interface
 export interface Wallet {
   walNum?: number;
   walName: string;
@@ -17,100 +17,100 @@ export interface Wallet {
   active?: string;
 }
 
-// 지갑 생성 응답 인터페이스
+// Wallet creation response interface
 export interface WalletCreateResponse {
   walNum: number;
   message: string;
 }
 
-// 지갑 업데이트 응답 인터페이스
+// Wallet update response interface
 export interface WalletUpdateResponse {
   message: string;
 }
 
 /**
- * 모든 지갑 목록 조회
+ * Get all wallets
  */
 export const getAllWallets = async (): Promise<Wallet[]> => {
   return apiGet<Wallet[]>('/api/wallets');
 };
 
 /**
- * 지갑 번호로 조회
- * @param walletId 지갑 번호
+ * Get wallet by ID
+ * @param walletId Wallet ID
  */
 export const getWalletById = async (walletId: number): Promise<Wallet> => {
   return apiGet<Wallet>(`/api/wallets/${walletId}`);
 };
 
 /**
- * 사용자 번호로 지갑 목록 조회
- * @param userId 사용자 번호
+ * Get wallets by user
+ * @param userId User ID
  */
 export const getWalletsByUser = async (userId: number): Promise<Wallet[]> => {
   return apiGet<Wallet[]>(`/api/wallets/user/${userId}`);
 };
 
 /**
- * 자산 번호로 지갑 목록 조회
- * @param assetId 자산 번호
+ * Get wallets by asset
+ * @param assetId Asset ID
  */
 export const getWalletsByAsset = async (assetId: number): Promise<Wallet[]> => {
   return apiGet<Wallet[]>(`/api/wallets/asset/${assetId}`);
 };
 
 /**
- * 지갑 타입으로 조회
- * @param type 지갑 타입 (Self-custody Hot, Cold, Trading)
+ * Get wallets by type
+ * @param type Wallet type (Self-custody Hot, Cold, Trading)
  */
 export const getWalletsByType = async (type: string): Promise<Wallet[]> => {
   return apiGet<Wallet[]>(`/api/wallets/type/${type}`);
 };
 
 /**
- * 프로토콜로 조회
- * @param protocol 지갑 프로토콜 (Multisig, MPC)
+ * Get wallets by protocol
+ * @param protocol Wallet protocol (Multisig, MPC)
  */
 export const getWalletsByProtocol = async (protocol: string): Promise<Wallet[]> => {
   return apiGet<Wallet[]>(`/api/wallets/protocol/${protocol}`);
 };
 
 /**
- * 상태로 조회
- * @param status 지갑 상태 (active, frozen, archived)
+ * Get wallets by status
+ * @param status Wallet status (active, frozen, archived)
  */
 export const getWalletsByStatus = async (status: string): Promise<Wallet[]> => {
   return apiGet<Wallet[]>(`/api/wallets/status/${status}`);
 };
 
 /**
- * 신규 지갑 등록
- * @param wallet 지갑 정보
+ * Create new wallet
+ * @param wallet Wallet information
  */
 export const createWallet = async (wallet: Wallet): Promise<WalletCreateResponse> => {
   return apiPost<WalletCreateResponse, Wallet>('/api/wallets', wallet);
 };
 
 /**
- * 지갑 정보 전체 업데이트
- * @param wallet 지갑 정보
+ * Update entire wallet information
+ * @param wallet Wallet information
  */
 export const updateWallet = async (wallet: Wallet): Promise<WalletUpdateResponse> => {
   return apiPut<WalletUpdateResponse, Wallet>('/api/wallets', wallet);
 };
 
 /**
- * 지갑 정보 부분 업데이트
- * @param wallet 지갑 부분 정보
+ * Partially update wallet information
+ * @param wallet Partial wallet information
  */
 export const patchWallet = async (wallet: Partial<Wallet> & { walNum: number }): Promise<WalletUpdateResponse> => {
   return apiPut<WalletUpdateResponse, Partial<Wallet>>('/api/wallets', wallet);
 };
 
 /**
- * 지갑 상태 업데이트
- * @param walletId 지갑 번호
- * @param status 변경할 상태
+ * Update wallet status
+ * @param walletId Wallet ID
+ * @param status Status to change
  */
 export const updateWalletStatus = async (walletId: number, status: string): Promise<WalletUpdateResponse> => {
   return apiPut<WalletUpdateResponse, { walNum: number, walStatus: string }>('/api/wallets/status', {
@@ -120,8 +120,8 @@ export const updateWalletStatus = async (walletId: number, status: string): Prom
 };
 
 /**
- * 지갑 삭제 (비활성화)
- * @param walletId 지갑 번호
+ * Delete wallet (deactivate)
+ * @param walletId Wallet ID
  */
 export const deleteWallet = async (walletId: number): Promise<WalletUpdateResponse> => {
   return apiDelete<WalletUpdateResponse>(`/api/wallets/${walletId}`);

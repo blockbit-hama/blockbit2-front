@@ -119,7 +119,7 @@ export default function SignUp(props: { disableCustomTheme?: boolean }) {
         setSignupStatus(null);
         
         const data = new FormData(event.currentTarget);
-        const userId = data.get('email')?.toString().split('@')[0]; // 이메일 아이디 부분을 사용자 ID로 활용
+        const userId = data.get('email')?.toString().split('@')[0]; // Use email ID part as user ID
         
         const userData = {
             usiId: userId,
@@ -144,7 +144,7 @@ export default function SignUp(props: { disableCustomTheme?: boolean }) {
             if (response.ok) {
                 setSignupStatus({
                     success: true,
-                    message: '회원가입이 성공적으로 완료되었습니다. 로그인 페이지로 이동합니다.',
+                    message: 'Sign up completed successfully. Redirecting to login page.',
                 });
                 // 3초 후 로그인 페이지로 리다이렉트
                 setTimeout(() => {
@@ -153,13 +153,13 @@ export default function SignUp(props: { disableCustomTheme?: boolean }) {
             } else {
                 setSignupStatus({
                     success: false,
-                    message: result.message || '회원가입 중 오류가 발생했습니다. 다시 시도해주세요.',
+                    message: result.message || 'An error occurred during sign up. Please try again.',
                 });
             }
         } catch (error) {
             setSignupStatus({
                 success: false,
-                message: '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.',
+                message: 'Failed to connect to the server. Please try again later.',
             });
             console.error('Error during sign up:', error);
         } finally {

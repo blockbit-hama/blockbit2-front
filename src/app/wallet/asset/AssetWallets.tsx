@@ -243,8 +243,8 @@ export default function AssetWallets(props: { disableCustomTheme?: boolean }) {
         setRefreshing(false);
       }
     } catch (err) {
-      console.error('지갑 데이터 가져오기 오류:', err);
-      setError('지갑 데이터를 불러오는 중 오류가 발생했습니다. 네트워크 연결을 확인하세요.');
+      console.error('Error fetching wallet data:', err);
+      setError('An error occurred while loading wallet data. Please check your network connection.');
       setRefreshing(false);
     } finally {
       setLoading(false);
@@ -300,16 +300,16 @@ export default function AssetWallets(props: { disableCustomTheme?: boolean }) {
     router.push(`/wallet/create?assetType=${assetName}`);
   };
 
-  // 입금 처리 핸들러
+  // Deposit handler
   const handleDeposit = (wallet: WalletData) => {
-    // 입금 처리 로직 구현 예정
-    console.log('입금 처리:', wallet);
+    // Deposit functionality to be implemented
+    console.log('Deposit processing:', wallet);
   };
 
-  // 출금 처리 핸들러
+  // Withdrawal handler
   const handleWithdraw = (wallet: WalletData) => {
-    // 출금 처리 로직 구현 예정
-    console.log('출금 처리:', wallet);
+    // Withdrawal functionality to be implemented
+    console.log('Withdrawal processing:', wallet);
   };
 
   // 뒤로 가기
@@ -555,7 +555,7 @@ export default function AssetWallets(props: { disableCustomTheme?: boolean }) {
                   <TableRow>
                     <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
                       <Typography variant="body1" color="text.secondary">
-                        {searchTerm ? '검색 결과가 없습니다.' : '지갑이 없습니다.'}
+                        {searchTerm ? 'No search results found.' : 'No wallets available.'}
                       </Typography>
                     </TableCell>
                   </TableRow>

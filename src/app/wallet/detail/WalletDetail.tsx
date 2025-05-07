@@ -45,10 +45,10 @@ import { getWalletById, Wallet } from '@/services/walletService';
 import { getAssetById, Asset } from '@/services/assetService';
 import { fetchAddresses, Address } from '@/services/addressService';
 
-// API 호출 베이스 URL
+// API call base URL
 const API_BASE_URL = 'http://localhost:8080';
 
-// 가격 데이터 매핑 (실제로는 별도 API에서 가져와야 함)
+// Price data mapping (should be fetched from a separate API in real implementation)
 const priceData: Record<string, {price: string, change24h: string}> = {
   'BTC': { price: '$97,322.81', change24h: '+1.2%' },
   'ETH': { price: '$1,827.29', change24h: '-0.5%' },
@@ -58,7 +58,7 @@ const priceData: Record<string, {price: string, change24h: string}> = {
   'USD': { price: '$1.00', change24h: '0.0%' }
 };
 
-// 스타일링된 컴포넌트
+// Styled components
 const InfoCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(2),
   boxShadow: 'none',
@@ -90,7 +90,7 @@ const ActionButton = styled(Button)(({ theme }) => ({
   fontSize: '14px',
 }));
 
-// 지갑 아이콘 컴포넌트
+// Wallet icon component
 const WalletIcon = styled('div')(() => ({
   width: 60,
   height: 60,
@@ -104,7 +104,7 @@ const WalletIcon = styled('div')(() => ({
   fontSize: '24px',
 }));
 
-// 암호화폐 아이콘 컴포넌트
+// Cryptocurrency icon component
 const CoinIcon = styled('div')(() => ({
   width: 40,
   height: 40,
@@ -118,7 +118,7 @@ const CoinIcon = styled('div')(() => ({
   fontSize: '20px',
 }));
 
-// 잔액 API 응답 타입
+// Balance API response type
 interface ApiBalance {
   balNum: number;
   adrId: number;
@@ -133,7 +133,7 @@ interface ApiBalance {
   active: string;
 }
 
-// 트랜잭션 API 응답 타입
+// Transaction API response type
 interface ApiTransaction {
   trxNum: number;
   trxHash: string;
@@ -205,7 +205,7 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
-  // 지갑 데이터 가져오기
+  // Get wallet data
   useEffect(() => {
     if (!walletId) {
       router.push('/wallet');
@@ -215,7 +215,7 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
     fetchWalletData(Number(walletId));
   }, [walletId, router]);
 
-  // 탭 변경 핸들러
+  // Tab change handler
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
@@ -348,8 +348,8 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
         formattedDate,
       });
     } catch (err) {
-      console.error('지갑 데이터 가져오기 오류:', err);
-      setError('지갑 데이터를 불러오는 중 오류가 발생했습니다. 네트워크 연결을 확인하세요.');
+      console.error('Error fetching wallet data:', err);
+      setError('An error occurred while loading wallet data. Please check your network connection.');
     } finally {
       setLoading(false);
     }
@@ -362,12 +362,12 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
 
   // 입금 처리 핸들러
   const handleDeposit = () => {
-    console.log('입금 처리');
+    console.log('Deposit processing');
   };
 
-  // 출금 처리 핸들러
+  // Withdrawal handler
   const handleWithdraw = () => {
-    console.log('출금 처리');
+    console.log('Withdrawal processing');
   };
 
   return (
@@ -405,7 +405,7 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
               {assetSymbol}
             </Link>
           )}
-          <Typography color="text.primary">{walletData?.walName || '지갑 상세'}</Typography>
+          <Typography color="text.primary">{walletData?.walName || 'Wallet Details'}</Typography>
         </Breadcrumbs>
         
         {/* 에러 메시지 */}
@@ -736,37 +736,37 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
             
             <TabPanel value={tabValue} index={1}>
               <Typography variant="body1">
-                Unspents 탭 내용입니다.
+                Unspents tab content.
               </Typography>
             </TabPanel>
             
             <TabPanel value={tabValue} index={2}>
               <Typography variant="body1">
-                Addresses 탭 내용입니다.
+                Addresses tab content.
               </Typography>
             </TabPanel>
             
             <TabPanel value={tabValue} index={3}>
               <Typography variant="body1">
-                Users 탭 내용입니다.
+                Users tab content.
               </Typography>
             </TabPanel>
             
             <TabPanel value={tabValue} index={4}>
               <Typography variant="body1">
-                Whitelist 탭 내용입니다.
+                Whitelist tab content.
               </Typography>
             </TabPanel>
             
             <TabPanel value={tabValue} index={5}>
               <Typography variant="body1">
-                Settings 탭 내용입니다.
+                Settings tab content.
               </Typography>
             </TabPanel>
           </>
         ) : (
           <Alert severity="error">
-            지갑 정보를 찾을 수 없습니다.
+            Wallet information not found.
           </Alert>
         )}
       </Container>

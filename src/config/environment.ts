@@ -1,21 +1,21 @@
 // src/config/environment.ts
-// 환경에 따른 설정 값을 관리합니다.
+// Manages configuration values based on environment.
 
-// 환경 타입 정의
+// Environment type definition
 type Environment = 'development' | 'production' | 'test';
 
-// 현재 환경 설정 (기본값: development)
+// Current environment setting (default: development)
 const currentEnv: Environment = 
   (process.env.NODE_ENV as Environment) || 'development';
 
-// 환경별 설정 값
+// Environment-specific configuration values
 const config = {
   development: {
     apiBaseUrl: 'http://localhost:8080',
-    apiTimeout: 30000, // 30초
+    apiTimeout: 30000, // 30 seconds
   },
   production: {
-    apiBaseUrl: 'https://api.blockbit.com', // 실제 프로덕션 URL로 변경 필요
+    apiBaseUrl: 'https://api.blockbit.com', // Change to actual production URL when ready
     apiTimeout: 30000,
   },
   test: {
@@ -24,9 +24,9 @@ const config = {
   },
 };
 
-// 현재 환경에 맞는 설정 내보내기
+// Export configuration for current environment
 export const env = config[currentEnv];
 
-// 편의를 위한 개별 설정 값 내보내기
+// Export individual config values for convenience
 export const API_BASE_URL = env.apiBaseUrl;
 export const API_TIMEOUT = env.apiTimeout;

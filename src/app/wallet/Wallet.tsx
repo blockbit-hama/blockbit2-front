@@ -36,7 +36,7 @@ import AppAppBar from '@/components/AppAppBar';
 import { brand, gray, green, red } from '@/theme/themePrimitives';
 import { fetchWithAuth, getUserId } from '@/lib/auth';
 
-// API 응답 타입 정의
+// API response type definitions
 interface ApiAsset {
   astNum: number;
   astName: string;
@@ -47,7 +47,7 @@ interface ApiAsset {
   active: string;
 }
 
-// 지갑 API 응답 타입
+// Wallet API response type
 interface ApiWallet {
   walNum: number;
   walName: string;
@@ -60,7 +60,7 @@ interface ApiWallet {
   active: string;
 }
 
-// 주소 API 응답 타입
+// Address API response type
 interface ApiAddress {
   adrNum: number;
   adrAddress: string;
@@ -72,7 +72,7 @@ interface ApiAddress {
   active: string;
 }
 
-// 잔액 API 응답 타입
+// Balance API response type
 interface ApiBalance {
   balNum: number;
   adrId: number;
@@ -87,7 +87,7 @@ interface ApiBalance {
   active: string;
 }
 
-// 자산 인터페이스
+// Asset interface
 interface Asset {
   id: number;
   name: string;
@@ -102,10 +102,10 @@ interface Asset {
   wallets?: ApiWallet[]; // 자산에 연결된 지갑 배열로 변경
 }
 
-// 정렬 필드 타입
+// Sort field type
 type SortField = 'name' | 'balance' | 'price' | 'portfolioPercent';
 
-// 가격 데이터 매핑 (실제로는 별도 API에서 가져와야 함)
+// Price data mapping (should be fetched from a separate API in real implementation)
 const priceData: Record<string, {price: string, change24h: string}> = {
   'BTC': { price: '$95,563.72', change24h: '+1.2%' },
   'ETH': { price: '$1,827.29', change24h: '-0.5%' },
@@ -115,7 +115,7 @@ const priceData: Record<string, {price: string, change24h: string}> = {
   'USD': { price: '$1.00', change24h: '0.0%' }
 };
 
-// API 호출 베이스 URL
+// API base URL
 const API_BASE_URL = 'http://localhost:8080';
 
 // 스타일링된 컴포넌트
@@ -218,7 +218,7 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
       return walletData;
     } catch (err) {
       console.error('Error fetching wallets:', err);
-      setError('지갑 정보를 불러오는 중 오류가 발생했습니다.');
+      setError('Error loading wallet information.');
       return [];
     }
   };
@@ -372,14 +372,14 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
       if (refreshing) {
         setSnackbar({
           open: true,
-          message: '자산 목록이 갱신되었습니다.',
+          message: 'Asset list has been refreshed.',
           severity: 'success'
         });
         setRefreshing(false);
       }
     } catch (err) {
-      console.error('자산 데이터 가져오기 오류:', err);
-      setError('자산 데이터를 불러오는 중 오류가 발생했습니다. 네트워크 연결을 확인하세요.');
+      console.error('Error fetching assets:', err);
+      setError('Error loading asset data. Please check your network connection.');
       setRefreshing(false);
     } finally {
       setLoading(false);
@@ -512,7 +512,7 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
   const handleDeposit = (asset: Asset) => {
     setSnackbar({
       open: true,
-      message: `${asset.name} 입금 기능은 준비 중입니다.`,
+      message: `${asset.name} deposit feature is coming soon.`,
       severity: 'info'
     });
   };
@@ -521,7 +521,7 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
   const handleWithdraw = (asset: Asset) => {
     setSnackbar({
       open: true,
-      message: `${asset.name} 출금 기능은 준비 중입니다.`,
+      message: `${asset.name} withdrawal feature is coming soon.`,
       severity: 'info'
     });
   };
@@ -677,7 +677,7 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
                   <TableRow>
                     <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                       <Typography variant="body1" color="text.secondary">
-                        {searchTerm ? '검색 결과가 없습니다.' : '자산이 없습니다.'}
+                        {searchTerm ? 'No search results found.' : 'No assets found.'}
                       </Typography>
                     </TableCell>
                   </TableRow>

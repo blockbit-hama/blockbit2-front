@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '지갑 생성 - BlockBit',
-  description: '새로운 암호화폐 지갑을 생성합니다.',
+  title: 'Create Wallet - BlockBit',
+  description: 'Create a new cryptocurrency wallet.',
 };
 
 export default function WalletCreateLayout({

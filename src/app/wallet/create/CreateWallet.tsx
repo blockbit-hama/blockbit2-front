@@ -34,7 +34,7 @@ import { createWallet } from '@/services/walletService';
 import { getAssetIdByType } from '@/services/assetService';
 import { createAddress } from '@/services/addressService';
 
-// 서명 프로토콜 카드 컴포넌트 스타일링
+// Signature protocol card component styling
 const ProtocolCard = styled(Card)(({ theme }) => ({
   display: 'flex',
   padding: theme.spacing(2),
@@ -66,8 +66,8 @@ const IconWrapper = styled('div')(({ theme }) => ({
   color: theme.palette.primary.contrastText,
 }));
 
-// 지갑 생성 단계
-const steps = ['지갑 정보', '서명 프로토콜', '비밀번호 설정', '확인'];
+// Wallet creation steps
+const steps = ['Wallet Info', 'Signature Protocol', 'Password Setup', 'Confirmation'];
 
 export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
   const router = useRouter();
@@ -221,7 +221,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
       const userId = getUserId();
       
       if (!userId) {
-        throw new Error('사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.');
+        throw new Error('User information not found. Please log in again.');
       }
       
       // 자산 ID 가져오기
@@ -259,8 +259,8 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
       // 지갑 생성 성공 시 지갑 목록 페이지로 이동
       router.push('/wallet');
     } catch (error) {
-      console.error('지갑 생성 오류:', error);
-      setError(error instanceof Error ? error.message : '지갑 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
+      console.error('Wallet creation error:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred while creating the wallet. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -274,22 +274,22 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
           <Box sx={{ mt: 2 }}>
             <FormControl fullWidth sx={{ mb: 2 }}>
               <TextField
-                label="지갑 이름"
+                label="Wallet Name"
                 value={walletName}
                 onChange={(e) => setWalletName(e.target.value)}
-                placeholder="예: 비트코인 메인 지갑"
+                placeholder="Example: Bitcoin Main Wallet"
                 fullWidth
                 required
               />
             </FormControl>
             
             <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel id="wallet-type-label">지갑 유형</InputLabel>
+              <InputLabel id="wallet-type-label">Wallet Type</InputLabel>
               <Select
                 labelId="wallet-type-label"
                 value={walletType}
                 onChange={(e) => setWalletType(e.target.value)}
-                label="지갑 유형"
+                label="Wallet Type"
                 fullWidth
               >
                 <MenuItem value="Self-custody Hot">Self-custody Hot</MenuItem>
@@ -299,12 +299,12 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
             </FormControl>
             
             <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel id="asset-type-label">자산 유형</InputLabel>
+              <InputLabel id="asset-type-label">Asset Type</InputLabel>
               <Select
                 labelId="asset-type-label"
                 value={assetType}
                 onChange={(e) => setAssetType(e.target.value)}
-                label="자산 유형"
+                label="Asset Type"
                 fullWidth
               >
                 <MenuItem value="Bitcoin">Bitcoin (BTC)</MenuItem>
@@ -320,12 +320,12 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
         return (
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6" gutterBottom>
-              서명 프로토콜
+              Signature Protocol
             </Typography>
             <Typography variant="body2" color="text.secondary" paragraph>
-              지갑의 서명 프로토콜을 선택하세요. 지갑 생성 후에는 서명 프로토콜을 변경할 수 없습니다.
+              Choose a signature protocol for your wallet. Once the wallet is created, the signature protocol cannot be changed.
               <Link href="#" color="primary" sx={{ ml: 1 }}>
-                자세히 알아보기
+                Learn more
               </Link>
             </Typography>
             
@@ -344,7 +344,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
                       Multisignature (Multisig)
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      온체인 암호화 기술로 3개의 키(사용자, 백업, BitGo)를 사용합니다. 각 키는 고유한 공개 키를 가지며, 거래에는 3개 중 2개의 키에서 서명이 필요합니다. 서명은 코사이너 간에 비동기적으로 이루어집니다.
+                      Uses on-chain cryptography with 3 keys (user, backup, BitGo). Each key has a unique public key, and transactions require signatures from 2 out of 3 keys. Signatures are performed asynchronously between co-signers.
                     </Typography>
                   </Box>
                   {selectedProtocol === 'Multisig' && (
@@ -369,7 +369,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
                       Multi-Party Computation (MPC)
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      여러 당사자가 서로의 비밀 입력을 공개하지 않고 공동으로 계산을 수행하는 암호화 기술입니다. 이더리움 계열 자산에 이상적이며, 더 높은 보안성과 효율성을 제공합니다.
+                      A cryptographic technique where multiple parties jointly perform calculations without revealing their secret inputs to each other. Ideal for Ethereum-based assets, offering higher security and efficiency.
                     </Typography>
                   </Box>
                   {selectedProtocol === 'MPC' && (
@@ -384,19 +384,19 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
         return (
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6" gutterBottom>
-              지갑 비밀번호 설정
+              Wallet Password Setup
             </Typography>
             <Typography variant="body2" color="text.secondary" paragraph>
-              강력한 비밀번호를 설정하여 지갑 보안을 강화하세요.
+              Set a strong password to enhance wallet security.
             </Typography>
             
             <FormControl fullWidth sx={{ mb: 2 }}>
               <TextField
-                label="비밀번호"
+                label="Password"
                 type="password"
                 value={walletPassword}
                 onChange={(e) => setWalletPassword(e.target.value)}
-                placeholder="최소 8자 이상 입력하세요"
+                placeholder="Enter at least 8 characters"
                 fullWidth
                 required
                 error={walletPassword !== '' && Object.values(passwordErrors).some(Boolean)}
@@ -405,44 +405,44 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
             
             <Box sx={{ mb: 2 }}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                비밀번호 요구사항:
+                Password requirements:
               </Typography>
               <Typography 
                 variant="body2" 
                 color={passwordErrors.length ? 'error.main' : 'success.main'}
               >
-                • 최소 8자 이상
+                • Minimum 8 characters
               </Typography>
               <Typography 
                 variant="body2" 
                 color={passwordErrors.uppercase ? 'error.main' : 'success.main'}
               >
-                • 최소 1개의 대문자 포함
+                • At least 1 uppercase letter
               </Typography>
               <Typography 
                 variant="body2" 
                 color={passwordErrors.number ? 'error.main' : 'success.main'}
               >
-                • 최소 1개의 숫자 포함
+                • At least 1 number
               </Typography>
               <Typography 
                 variant="body2" 
                 color={passwordErrors.special ? 'error.main' : 'success.main'}
               >
-                • 최소 1개의 특수문자 포함
+                • At least 1 special character
               </Typography>
             </Box>
             
             <FormControl fullWidth sx={{ mb: 2 }}>
               <TextField
-                label="비밀번호 확인"
+                label="Confirm Password"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 fullWidth
                 required
                 error={confirmPassword !== '' && walletPassword !== confirmPassword}
-                helperText={confirmPassword !== '' && walletPassword !== confirmPassword ? '비밀번호가 일치하지 않습니다.' : ''}
+                helperText={confirmPassword !== '' && walletPassword !== confirmPassword ? 'Passwords do not match.' : ''}
               />
             </FormControl>
           </Box>
@@ -455,34 +455,34 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
         return (
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6" gutterBottom>
-              지갑 정보 확인
+              Wallet Information Confirmation
             </Typography>
             <Typography variant="body2" color="text.secondary" paragraph>
-              아래 정보를 확인하고 지갑을 생성하세요.
+              Verify the information below and create your wallet.
             </Typography>
             
             <Box sx={{ bgcolor: 'background.paper', p: 2, borderRadius: 1, mb: 2 }}>
-              <Typography variant="subtitle2">지갑 이름:</Typography>
+              <Typography variant="subtitle2">Wallet Name:</Typography>
               <Typography variant="body1" paragraph>{walletName}</Typography>
               
-              <Typography variant="subtitle2">지갑 유형:</Typography>
+              <Typography variant="subtitle2">Wallet Type:</Typography>
               <Typography variant="body1" paragraph>{walletType}</Typography>
               
-              <Typography variant="subtitle2">자산 유형:</Typography>
+              <Typography variant="subtitle2">Asset Type:</Typography>
               <Typography variant="body1" paragraph>{assetType}</Typography>
               
-              <Typography variant="subtitle2">서명 프로토콜:</Typography>
+              <Typography variant="subtitle2">Signature Protocol:</Typography>
               <Typography variant="body1" paragraph>{selectedProtocol}</Typography>
               
-              <Typography variant="subtitle2">새 주소 (자동 생성):</Typography>
+              <Typography variant="subtitle2">New Address (automatically generated):</Typography>
               <Typography variant="body2" sx={{ wordBreak: 'break-all', mb: 1 }}>{address}</Typography>
               
-              <Typography variant="subtitle2">주소 라벨:</Typography>
+              <Typography variant="subtitle2">Address Label:</Typography>
               <Typography variant="body1">{addressLabel}</Typography>
             </Box>
             
             <Alert severity="warning">
-              중요: 지갑을 생성한 후에는 서명 프로토콜을 변경할 수 없습니다. 계속하시겠습니까?
+              Important: Once the wallet is created, the signature protocol cannot be changed. Do you want to continue?
             </Alert>
           </Box>
         );
@@ -501,7 +501,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
         sx={{ display: 'flex', flexDirection: 'column', mt: 16, mb: 8, gap: 4 }}
       >
         <Typography variant="h4" gutterBottom>
-          새 지갑 생성
+          Create New Wallet
         </Typography>
         
         <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
@@ -528,7 +528,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
                 disabled={activeStep === 0 || loading}
                 onClick={handleBack}
               >
-                이전
+                Previous
               </Button>
               <Button
                 variant="contained"
@@ -536,7 +536,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
                 onClick={handleNext}
                 disabled={!isStepValid() || loading}
               >
-                {activeStep === steps.length - 1 ? '지갑 생성' : '다음'}
+                {activeStep === steps.length - 1 ? 'Create Wallet' : 'Next'}
               </Button>
             </Box>
           </CardContent>

@@ -1,9 +1,9 @@
 // src/services/addressService.ts
-// 주소 관련 API 요청을 처리하는 서비스
+// Service for handling address-related API requests
 
 import { apiGet, apiPost, apiPut, apiDelete } from './apiService';
 
-// 주소 인터페이스
+// Address interface
 export interface Address {
   adrNum?: number;
   adrAddress: string;
@@ -15,18 +15,18 @@ export interface Address {
   active?: string;
 }
 
-// 주소 생성 응답 인터페이스
+// Address creation response interface
 export interface AddressCreateResponse {
   adrNum: number;
   message: string;
 }
 
-// 주소 업데이트 응답 인터페이스
+// Address update response interface
 export interface AddressUpdateResponse {
   message: string;
 }
 
-// 잔액 인터페이스
+// Balance interface
 export interface Balance {
   balNum: number;
   adrId: number;
@@ -42,88 +42,88 @@ export interface Balance {
 }
 
 /**
- * 모든 주소 목록 조회
+ * Get all addresses
  */
 export const getAllAddresses = async (): Promise<Address[]> => {
   return apiGet<Address[]>('/api/addresses');
 };
 
 /**
- * 주소 번호로 조회
- * @param addressId 주소 번호
+ * Get address by ID
+ * @param addressId Address ID
  */
 export const getAddressById = async (addressId: number): Promise<Address> => {
   return apiGet<Address>(`/api/addresses/${addressId}`);
 };
 
 /**
- * 지갑 ID로 주소 목록 조회
- * @param walletId 지갑 번호
+ * Get addresses by wallet ID
+ * @param walletId Wallet ID
  */
 export const fetchAddresses = async (walletId: number): Promise<Address[]> => {
   return apiGet<Address[]>(`/api/addresses/wallet/${walletId}`);
 };
 
 /**
- * 자산 ID로 주소 목록 조회
- * @param assetId 자산 번호
+ * Get addresses by asset ID
+ * @param assetId Asset ID
  */
 export const getAddressesByAsset = async (assetId: number): Promise<Address[]> => {
   return apiGet<Address[]>(`/api/addresses/asset/${assetId}`);
 };
 
 /**
- * 주소 타입으로 조회
- * @param type 주소 타입 (receive, change, cold)
+ * Get addresses by type
+ * @param type Address type (receive, change, cold)
  */
 export const getAddressesByType = async (type: string): Promise<Address[]> => {
   return apiGet<Address[]>(`/api/addresses/type/${type}`);
 };
 
 /**
- * 실제 암호화폐 주소로 조회
- * @param cryptoAddress 암호화폐 주소
+ * Get address by cryptocurrency address
+ * @param cryptoAddress Cryptocurrency address
  */
 export const getAddressByCryptoAddress = async (cryptoAddress: string): Promise<Address> => {
   return apiGet<Address>(`/api/addresses/crypto-address/${cryptoAddress}`);
 };
 
 /**
- * 신규 주소 등록
- * @param address 주소 정보
+ * Create new address
+ * @param address Address information
  */
 export const createAddress = async (address: Address): Promise<AddressCreateResponse> => {
   return apiPost<AddressCreateResponse, Address>('/api/addresses', address);
 };
 
 /**
- * 주소 정보 업데이트
- * @param address 주소 정보
+ * Update address information
+ * @param address Address information
  */
 export const updateAddress = async (address: Address): Promise<AddressUpdateResponse> => {
   return apiPut<AddressUpdateResponse, Address>('/api/addresses', address);
 };
 
 /**
- * 주소 정보 부분 업데이트
- * @param address 주소 부분 정보
+ * Partially update address information
+ * @param address Partial address information
  */
 export const patchAddress = async (address: Partial<Address> & { adrNum: number }): Promise<AddressUpdateResponse> => {
   return apiPut<AddressUpdateResponse, Partial<Address>>('/api/addresses', address);
 };
 
 /**
- * 주소 삭제 (비활성화)
- * @param addressId 주소 번호
+ * Delete address (deactivate)
+ * @param addressId Address ID
  */
 export const deleteAddress = async (addressId: number): Promise<AddressUpdateResponse> => {
   return apiDelete<AddressUpdateResponse>(`/api/addresses/${addressId}`);
 };
 
 /**
- * 주소의 자산 잔액 조회
- * @param addressId 주소 번호
- * @param assetId 자산 번호
+ * Get asset balance for an address
+ * @param addressId Address ID
+ * @param assetId Asset ID
  */
 export const fetchBalance = async (addressId: number, assetId: number): Promise<Balance | null> => {
   try {
@@ -139,7 +139,7 @@ export const fetchBalance = async (addressId: number, assetId: number): Promise<
       return null;
     }
     
-    // 가장 최신 잔액 정보 반환
+    // Return the most recent balance information
     return matchingBalances.reduce((latest, current) => {
       if (!latest.credat || !current.credat) {
         return current;
