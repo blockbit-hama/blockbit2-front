@@ -28,5 +28,9 @@ const config = {
 export const env = config[currentEnv];
 
 // Export individual config values for convenience
-export const API_BASE_URL = env.apiBaseUrl;
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 export const API_TIMEOUT = env.apiTimeout;
+
+// 기타 환경 설정
+export const APP_ENV = process.env.NODE_ENV || 'development';
+export const IS_PRODUCTION = APP_ENV === 'production';

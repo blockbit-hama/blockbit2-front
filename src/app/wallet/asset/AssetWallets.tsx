@@ -43,9 +43,7 @@ import { Wallet } from '@/services/walletService';
 import { getAssetBySymbol } from '@/services/assetService';
 import { fetchAddresses } from '@/services/addressService';
 import { getWalletsByUser } from '@/services/walletService';
-
-// API 호출 베이스 URL
-const API_BASE_URL = 'http://localhost:8080';
+import { API_BASE_URL } from '@/config/environment';
 
 // 가격 데이터 매핑 (실제로는 별도 API에서 가져와야 함)
 const priceData: Record<string, {price: string, change24h: string}> = {

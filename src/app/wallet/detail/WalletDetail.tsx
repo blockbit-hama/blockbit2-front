@@ -51,9 +51,7 @@ import { fetchWithAuth } from '@/lib/auth';
 import { getWalletById, Wallet } from '@/services/walletService';
 import { getAssetById, Asset } from '@/services/assetService';
 import { fetchAddresses, Address } from '@/services/addressService';
-
-// API call base URL
-const API_BASE_URL = 'http://localhost:8080';
+import { API_BASE_URL } from '@/config/environment';
 
 // Price data mapping (should be fetched from a separate API in real implementation)
 const priceData: Record<string, {price: string, change24h: string}> = {
