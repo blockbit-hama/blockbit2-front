@@ -160,7 +160,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
   };
 
   // 주소 생성을 위한 함수
-  const generateAddressForWallet = (asset: string, walletType: string): { address: string, path: string } => {
+  const generateAddressForWallet = (asset: string) => {
     let prefix = '';
     let derivationPath = '';
     
@@ -242,7 +242,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
       // 지갑 생성 성공하면 주소 생성
       if (walletResponse && walletResponse.walNum) {
         // 주소 자동 생성
-        const { address, path } = generateAddressForWallet(assetType, walletType);
+        const { address } = generateAddressForWallet(assetType);
         const addressLabel = `${assetType} ${walletType} Wallet Main Address`;
         
         // 주소 생성 API 호출
@@ -250,7 +250,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
           adrAddress: address,
           adrLabel: addressLabel,
           adrType: 'receive', // 기본 receive 타입으로 설정
-          adrPath: path,
+          adrPath: generateAddressForWallet(assetType).path,
           walId: walletResponse.walNum,
           astId: assetId
         });
@@ -449,7 +449,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
         );
       case 3:
         // 주소 미리보기 정보 생성
-        const { address, path } = generateAddressForWallet(assetType, walletType);
+        const { address } = generateAddressForWallet(assetType);
         const addressLabel = `${assetType} ${walletType} Wallet Main Address`;
         
         return (

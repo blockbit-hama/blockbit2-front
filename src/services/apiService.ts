@@ -7,9 +7,9 @@ import { getCookie } from '@/lib/auth';
 // API error class definition
 export class ApiError extends Error {
   status: number;
-  data: any;
+  data: unknown;
 
-  constructor(message: string, status: number, data?: any) {
+  constructor(message: string, status: number, data?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
@@ -101,7 +101,10 @@ export const apiRequest = async <T>(
  * @param endpoint API endpoint
  * @param params URL query parameters (optional)
  */
-export const apiGet = async <T>(endpoint: string, params?: Record<string, any>): Promise<T> => {
+export const apiGet = async <T>(
+  endpoint: string, 
+  params?: Record<string, string | number | boolean>
+): Promise<T> => {
   // Process query parameters
   let url = endpoint;
   if (params && Object.keys(params).length > 0) {
@@ -122,8 +125,11 @@ export const apiGet = async <T>(endpoint: string, params?: Record<string, any>):
  * @param endpoint API endpoint
  * @param data Request body data
  */
-export const apiPost = async <T, D = any>(endpoint: string, data?: D): Promise<T> => {
-  return apiRequest<T>(endpoint, {
+export const apiPost = async <TResponse, TData extends Record<string, unknown>>(
+  endpoint: string, 
+  data?: TData
+): Promise<TResponse> => {
+  return apiRequest<TResponse>(endpoint, {
     method: 'POST',
     body: data ? JSON.stringify(data) : undefined,
   });
@@ -134,8 +140,11 @@ export const apiPost = async <T, D = any>(endpoint: string, data?: D): Promise<T
  * @param endpoint API endpoint
  * @param data Request body data
  */
-export const apiPut = async <T, D = any>(endpoint: string, data?: D): Promise<T> => {
-  return apiRequest<T>(endpoint, {
+export const apiPut = async <TResponse, TData extends Record<string, unknown>>(
+  endpoint: string, 
+  data?: TData
+): Promise<TResponse> => {
+  return apiRequest<TResponse>(endpoint, {
     method: 'PUT',
     body: data ? JSON.stringify(data) : undefined,
   });
@@ -146,8 +155,11 @@ export const apiPut = async <T, D = any>(endpoint: string, data?: D): Promise<T>
  * @param endpoint API endpoint
  * @param data Request body data
  */
-export const apiPatch = async <T, D = any>(endpoint: string, data?: D): Promise<T> => {
-  return apiRequest<T>(endpoint, {
+export const apiPatch = async <TResponse, TData extends Record<string, unknown>>(
+  endpoint: string, 
+  data?: TData
+): Promise<TResponse> => {
+  return apiRequest<TResponse>(endpoint, {
     method: 'PATCH',
     body: data ? JSON.stringify(data) : undefined,
   });

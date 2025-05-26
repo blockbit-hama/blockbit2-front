@@ -39,8 +39,8 @@ import AppTheme from '@/theme/AppTheme';
 import AppAppBar from '@/components/AppAppBar';
 import { brand, gray } from '@/theme/themePrimitives';
 import { fetchWithAuth, getUserId } from '@/lib/auth';
-import { getWalletsByAsset, Wallet } from '@/services/walletService';
-import { getAssetBySymbol, getAssetById } from '@/services/assetService';
+import { Wallet } from '@/services/walletService';
+import { getAssetBySymbol } from '@/services/assetService';
 import { fetchAddresses } from '@/services/addressService';
 import { getWalletsByUser } from '@/services/walletService';
 
@@ -56,18 +56,6 @@ const priceData: Record<string, {price: string, change24h: string}> = {
   'SOL': { price: '$145.42', change24h: '+3.2%' },
   'USD': { price: '$1.00', change24h: '0.0%' }
 };
-
-// 주소 API 응답 타입
-interface ApiAddress {
-  adrNum: number;
-  adrAddress: string;
-  adrLabel: string;
-  adrType: string;
-  adrPath: string;
-  walId: number;
-  astId: number;
-  active: string;
-}
 
 // 잔액 API 응답 타입
 interface ApiBalance {
@@ -94,7 +82,7 @@ const ActionButton = styled(Button)(({ theme }) => ({
 }));
 
 // 지갑 아이콘 컴포넌트
-const WalletIcon = styled('div')(({ theme }) => ({
+const WalletIcon = styled('div')(() => ({
   width: 40,
   height: 40,
   borderRadius: '50%',
