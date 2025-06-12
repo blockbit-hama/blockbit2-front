@@ -75,8 +75,10 @@ export const login = async (email: string, password: string) => {
             throw new Error('Login failed');
         }
 
-        const data = await response.json();
-        
+        const data = await response.json().then((res) => {
+            return res.data;
+        })
+
         if (data.token) {
             setCookie("auth_token", data.token);
             

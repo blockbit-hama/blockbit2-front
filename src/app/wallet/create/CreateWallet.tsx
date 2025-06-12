@@ -1,38 +1,38 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import AppTheme from "@/theme/AppTheme";
+import CssBaseline from "@mui/material/CssBaseline";
+import AppAppBar from "@/components/AppAppBar";
+import Container from "@mui/material/Container";
+
 import * as React from 'react';
-import { useState, useEffect } from 'react';
-import { styled } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import Container from '@mui/material/Container';
+import { useRouter } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import Step from '@mui/material/Step';
+import StepLabel from '@mui/material/StepLabel';
+import Stepper from '@mui/material/Stepper';
+import Alert from '@mui/material/Alert';
+
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+
 import FormControl from '@mui/material/FormControl';
 import TextField from '@mui/material/TextField';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
-import Step from '@mui/material/Step';
-import StepLabel from '@mui/material/StepLabel';
-import Stepper from '@mui/material/Stepper';
-import Alert from '@mui/material/Alert';
 import Link from '@mui/material/Link';
 
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import SecurityIcon from '@mui/icons-material/Security';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-
-import AppTheme from '@/theme/AppTheme';
-import AppAppBar from '@/components/AppAppBar';
-import { useRouter } from 'next/navigation';
 import { getUserId } from '@/lib/auth';
-import { createWallet } from '@/services/walletService';
-import { getAssetIdByType } from '@/services/assetService';
-import { createAddress } from '@/services/addressService';
+import { createBitcoinWallet, WalletProtocol, WalletType } from '@/services/walletsService';
+import SecurityIcon from '@mui/icons-material/Security';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { styled } from "@mui/material/styles";
 
 // Signature protocol card component styling
 const ProtocolCard = styled(Card)(({ theme }) => ({
@@ -66,58 +66,54 @@ const IconWrapper = styled('div')(({ theme }) => ({
   color: theme.palette.primary.contrastText,
 }));
 
-// Wallet creation steps
 const steps = ['Wallet Info', 'Signature Protocol', 'Password Setup', 'Confirmation'];
 
 export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
   const router = useRouter();
   const [activeStep, setActiveStep] = useState(0);
+  const [selectedProtocol, setSelectedProtocol] = useState<WalletProtocol>('MPC');
   const [walletName, setWalletName] = useState('');
-  const [walletType, setWalletType] = useState('Self-custody Hot');
+  const [walletType, setWalletType] = useState<WalletType>('Self-custody Hot');
   const [assetType, setAssetType] = useState('Bitcoin');
-  const [selectedProtocol, setSelectedProtocol] = useState('');
+  const [protocolOptions, setProtocolOptions] = useState<string[]>(['Multisig', 'MPC']);
   const [walletPassword, setWalletPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [protocolOptions, setProtocolOptions] = useState<string[]>([]);
-
-  // 비밀번호 유효성 검사 상태
   const [passwordErrors, setPasswordErrors] = useState({
     length: false,
     uppercase: false,
     number: false,
-    special: false,
+    special: false
   });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    init();
+  }, []);
+
+  const init = async () => {
+    try {
+
+    } catch (error) {
+
+    }
+  }
 
   // 자산 유형에 따라 서명 프로토콜 옵션 설정
   useEffect(() => {
-    if (assetType === 'Bitcoin' || assetType === 'Bitcoin Cash' || assetType === 'Litecoin') {
+    if (assetType === 'Bitcoin') {
       // 비트코인 계열은 Multisig만 지원
       setProtocolOptions(['Multisig']);
       setSelectedProtocol('Multisig');
-    } else if (assetType === 'Ethereum' || assetType === 'ERC-20') {
+    } else if (assetType === 'Ethereum') {
       // 이더리움 계열은 Multisig와 MPC를 모두 지원
       setProtocolOptions(['Multisig', 'MPC']);
-      setSelectedProtocol(''); // 사용자가 선택하도록 초기화
+      setSelectedProtocol('MPC'); // 사용자가 선택하도록 초기화
     } else {
       // 기타 자산은 기본값
       setProtocolOptions(['Multisig']);
       setSelectedProtocol('Multisig');
     }
   }, [assetType]);
-
-  // 비밀번호 유효성 검사
-  useEffect(() => {
-    if (walletPassword) {
-      setPasswordErrors({
-        length: walletPassword.length < 8,
-        uppercase: !/[A-Z]/.test(walletPassword),
-        number: !/[0-9]/.test(walletPassword),
-        special: !/[!@#$%^&*(),.?":{}|<>]/.test(walletPassword),
-      });
-    }
-  }, [walletPassword]);
 
   // 비밀번호 유효성 검사 통과 여부
   const isPasswordValid = () => {
@@ -134,29 +130,14 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
   const isStepValid = () => {
     switch (activeStep) {
       case 0: // 지갑 정보
-        return walletName.trim() !== '' && walletType !== '' && assetType !== '';
+        return walletName.trim() !== '' && walletType && assetType !== '';
       case 1: // 서명 프로토콜
-        return selectedProtocol !== '';
+        return selectedProtocol;
       case 2: // 비밀번호 설정
         return isPasswordValid();
       default:
         return true;
     }
-  };
-
-  // 다음 단계로 이동
-  const handleNext = () => {
-    if (activeStep === steps.length - 1) {
-      // 마지막 단계에서는 지갑 생성 API 호출
-      handleCreateWallet();
-    } else {
-      setActiveStep((prevActiveStep) => prevActiveStep + 1);
-    }
-  };
-
-  // 이전 단계로 이동
-  const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
 
   // 주소 생성을 위한 함수
@@ -175,21 +156,6 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
         prefix = '0x';
         derivationPath = 'm/44\'/60\'/0\'/0/0';
         break;
-      case 'Bitcoin Cash':
-        prefix = 'bitcoincash:q';
-        derivationPath = 'm/44\'/145\'/0\'/0/0';
-        break;
-      case 'Litecoin':
-        prefix = 'ltc1q';
-        derivationPath = 'm/84\'/2\'/0\'/0/0';
-        break;
-      case 'Ripple':
-        prefix = 'r';
-        derivationPath = 'm/44\'/144\'/0\'/0/0';
-        break;
-      default:
-        prefix = '0x';
-        derivationPath = 'm/44\'/0\'/0\'/0/0';
     }
     
     // 랜덤 문자열 생성 (시뮬레이션)
@@ -212,10 +178,24 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
     return { address, path: derivationPath };
   };
 
+    // 다음 단계로 이동
+  const handleNext = () => {
+    if (activeStep === steps.length - 1) {
+      // 마지막 단계에서는 지갑 생성 API 호출
+      handleCreateWallet();
+    } else {
+      setActiveStep((prevActiveStep) => prevActiveStep + 1);
+    }
+  };
+
+  // 이전 단계로 이동
+  const handleBack = () => {
+    setActiveStep((prevActiveStep) => prevActiveStep - 1);
+  };
+
   // 지갑 생성 API 호출
   const handleCreateWallet = async () => {
     setLoading(true);
-    setError('');
     
     try {
       const userId = getUserId();
@@ -223,50 +203,27 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
       if (!userId) {
         throw new Error('User information not found. Please log in again.');
       }
-      
-      // 자산 ID 가져오기
-      const assetId = getAssetIdByType(assetType);
-      
+
       // 지갑 생성 API 호출
-      const walletResponse = await createWallet({
+      await createBitcoinWallet({
         walName: walletName,
         walType: walletType,
         walProtocol: selectedProtocol,
-        walPwd: walletPassword,
         walStatus: 'active',
         usiNum: userId,
-        astId: assetId,
-        polId: 1 // 정책 ID는 일단 1로 고정
+        astNum: 1,
+        polNum: 1
       });
-      
-      // 지갑 생성 성공하면 주소 생성
-      if (walletResponse && walletResponse.walNum) {
-        // 주소 자동 생성
-        const { address } = generateAddressForWallet(assetType);
-        const addressLabel = `${assetType} ${walletType} Wallet Main Address`;
-        
-        // 주소 생성 API 호출
-        await createAddress({
-          adrAddress: address,
-          adrLabel: addressLabel,
-          adrType: 'receive', // 기본 receive 타입으로 설정
-          adrPath: generateAddressForWallet(assetType).path,
-          walId: walletResponse.walNum,
-          astId: assetId
-        });
-      }
       
       // 지갑 생성 성공 시 지갑 목록 페이지로 이동
       router.push('/wallet');
     } catch (error) {
       console.error('Wallet creation error:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred while creating the wallet. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // 각 단계별 컴포넌트 렌더링
   const getStepContent = (step: number) => {
     switch (step) {
       case 0:
@@ -309,9 +266,6 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
               >
                 <MenuItem value="Bitcoin">Bitcoin (BTC)</MenuItem>
                 <MenuItem value="Ethereum">Ethereum (ETH)</MenuItem>
-                <MenuItem value="Bitcoin Cash">Bitcoin Cash (BCH)</MenuItem>
-                <MenuItem value="Litecoin">Litecoin (LTC)</MenuItem>
-                <MenuItem value="ERC-20">ERC-20 Tokens</MenuItem>
               </Select>
             </FormControl>
           </Box>
@@ -491,6 +445,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
     }
   };
 
+  
   return (
     <AppTheme {...props}>
       <CssBaseline enableColorScheme />
@@ -503,7 +458,7 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
         <Typography variant="h4" gutterBottom>
           Create New Wallet
         </Typography>
-        
+
         <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
           {steps.map((label) => (
             <Step key={label}>
@@ -511,17 +466,11 @@ export default function CreateWallet(props: { disableCustomTheme?: boolean }) {
             </Step>
           ))}
         </Stepper>
-        
+
         <Card variant="outlined">
           <CardContent>
             {getStepContent(activeStep)}
-            
-            {error && (
-              <Alert severity="error" sx={{ mt: 2 }}>
-                {error}
-              </Alert>
-            )}
-            
+                       
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
               <Button
                 variant="outlined"
