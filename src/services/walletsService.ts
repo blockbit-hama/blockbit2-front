@@ -272,3 +272,31 @@ export const getWalletUsersList = async (
   const response = await apiGet<ApiResponse<UserInfo[]>>(`/api/wal/users/list/${walNum}`, params as Record<string, string | number | boolean>);
   return response.data || [];
 };
+
+/**
+ * 비트코인 출금 트랜잭션 생성
+ * POST /api/wallet/bitcoin/transaction/create
+ * @param params { toAddress, privateKeyHex, amountSatoshi, wadNum }
+ * @returns 생성된 트랜잭션 응답
+ */
+export const createBitcoinTransaction = async (params: {
+  toAddress: string;
+  privateKeyHex: string;
+  amountSatoshi: number;
+  wadNum: number;
+}): Promise<any> => {
+  return apiPost<any, typeof params>('/api/wallet/bitcoin/transaction/create', params);
+};
+
+/**
+ * 비트코인 트랜잭션 완료(서명)
+ * POST /api/wallet/bitcoin/transaction/complete
+ * @param params { trxNum, privateKeyHex }
+ * @returns 완료 응답
+ */
+export const completeBitcoinTransaction = async (params: {
+  trxNum: number;
+  privateKeyHex: string;
+}): Promise<any> => {
+  return apiPost<any, typeof params>('/api/wallet/bitcoin/transaction/complete', params);
+};

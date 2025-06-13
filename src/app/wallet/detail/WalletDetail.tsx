@@ -50,13 +50,14 @@ import { brand, gray } from '@/theme/themePrimitives';
 import { fetchWithAuth } from '@/lib/auth';
 import { getAssetById, Asset } from '@/services/assetService';
 import { API_BASE_URL } from '@/config/environment';
-import { getWalletById, getWalletUsersList } from '@/services/walletsService';
+import { getWalletById, getWalletUsersList, createBitcoinTransaction, completeBitcoinTransaction } from '@/services/walletsService';
 import { Wallet } from '@/services/walletsService';
 import { getWalletAddressesByWallet, WalletAddress } from '@/services/walletAddressesService';
 import { getTransactionsByWallet, Transaction } from '@/services/transactionsService';
-import { getUserInfoList, getCurrentUser, UserInfo } from '@/services/userInfoService';
+import { getUserInfoList, UserInfo } from '@/services/userInfoService';
 import { getUserId } from '@/lib/auth';
 import { addUserToWallet as addUserToWalletService, removeUserFromWallet, WalletRole } from '@/services/walUsiMappService';
+import QRCode from 'react-qr-code';
 
 const priceData: Record<string, {price: string, change24h: string}> = {
   'BTC': { price: '0', change24h: '0' },
@@ -183,6 +184,16 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
   const [deleteUsers, setDeleteUsers] = useState<UserInfo[]>([]);
   const [deleteUsersLoading, setDeleteUsersLoading] = useState(false);
   const [deleteUsersError, setDeleteUsersError] = useState<string | null>(null);
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [withdrawForm, setWithdrawForm] = useState({
+    toAddress: '',
+    amount: '',
+    privateKey: '',
+  });
+  const [transactionDetailModalOpen, setTransactionDetailModalOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [transactionPrivateKey, setTransactionPrivateKey] = useState('');
 
   const walletNum = React.useMemo(() => {
     const n = Number(walletId);
@@ -202,11 +213,6 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
         .finally(() => setUsersLoading(false));
     }
   }, [tabValue]);
-
-  useEffect(() => {
-    // 현재 로그인한 사용자 정보 가져오기
-    getCurrentUser().then(setCurrentUser).catch(() => setCurrentUser(null));
-  }, []);
 
   const init = async () => {
     try {
@@ -307,11 +313,11 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
   };
 
   const handleDeposit = () => {
-    setTransactionDialog({ type: 'deposit', open: true });
+    setDepositModalOpen(true);
   };
 
   const handleWithdraw = () => {
-    setTransactionDialog({ type: 'withdraw', open: true });
+    setWithdrawModalOpen(true);
   };
 
   const handleOpenAddUserModal = async () => {
@@ -364,6 +370,62 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
       await removeUserFromWallet(usiNum, walletNum);
       handleCloseDeleteUserModal();
     }
+  };
+
+  const handleCloseDepositModal = () => {
+    setDepositModalOpen(false);
+  };
+
+  const handleCloseWithdrawModal = () => {
+    setWithdrawModalOpen(false);
+  };
+
+  const handleWithdrawFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setWithdrawForm({ ...withdrawForm, [e.target.name]: e.target.value });
+  };
+
+  const handleWithdrawSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!withdrawForm.toAddress || !withdrawForm.amount || !withdrawForm.privateKey) return;
+    if (walletNum === undefined) return;
+    try {
+      const result = await createBitcoinTransaction({
+        toAddress: withdrawForm.toAddress,
+        privateKeyHex: withdrawForm.privateKey,
+        amountSatoshi: Number(withdrawForm.amount),
+        wadNum: walletNum,
+        walNum: walletNum,
+      });
+      console.log('Withdraw result:', result);
+    } catch (err) {
+      console.error('Withdraw error:', err);
+    }
+    setWithdrawModalOpen(false);
+  };
+
+  const handleTransactionRowClick = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setTransactionDetailModalOpen(true);
+  };
+
+  const handleCloseTransactionDetailModal = () => {
+    setTransactionDetailModalOpen(false);
+    setSelectedTransaction(null);
+  };
+
+  const handleAcceptTransaction = async () => {
+    if (!selectedTransaction || !transactionPrivateKey) return;
+    try {
+      const result = await completeBitcoinTransaction({
+        trxNum: selectedTransaction.trxNum,
+        privateKeyHex: transactionPrivateKey,
+      });
+      console.log('Transaction complete result:', result);
+    } catch (err) {
+      console.error('Transaction complete error:', err);
+    }
+    setTransactionDetailModalOpen(false);
+    setTransactionPrivateKey('');
   };
 
   return (
@@ -554,7 +616,6 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
                             <ActionButton 
                               variant="outlined" 
                               onClick={handleWithdraw}
-                              disabled={walletData.balance === 0}
                               startIcon={<FileUploadIcon fontSize="small" />}
                             >
                               Withdraw
@@ -706,7 +767,9 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
                         </TableRow>
                       ) : (
                         transactions.map((transaction) => (
-                          <TableRow key={transaction.trxNum}>
+                          <TableRow key={transaction.trxNum} hover style={{ cursor: 'pointer' }}
+                            onClick={() => handleTransactionRowClick(transaction)}
+                          >
                             <TableCell>{transaction.trxTxId}</TableCell>
                             <TableCell>{transaction.trxToAddr}</TableCell>
                             <TableCell>{transaction.trxAmount}</TableCell>
@@ -816,7 +879,7 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
                               <TableRow key={user.usiNum} hover style={{ cursor: 'pointer' }}
                                 onClick={async () => {
                                   if (walletNum !== undefined) {
-                                    await addUserToWallet(user.usiNum, walletNum, 'viewer');
+                                    await addUserToWallet(user.usiNum || 0, walletNum, 'viewer');
                                     handleCloseAddUserModal();
                                   }
                                 }}
@@ -870,7 +933,7 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
                           ) : (
                             deleteUsers.map(user => (
                               <TableRow key={user.usiNum} hover style={{ cursor: 'pointer' }}
-                                onClick={async () => await handleDeleteUser(user.usiNum)}
+                                onClick={async () => await handleDeleteUser(user.usiNum || 0)}
                               >
                                 <TableCell>{user.usiNum}</TableCell>
                                 <TableCell>{user.usiId}</TableCell>
@@ -908,6 +971,83 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
             Wallet information not found.
           </Alert>
         )}
+        {/* Deposit Modal */}
+        <Dialog open={depositModalOpen} onClose={handleCloseDepositModal} maxWidth="xs" fullWidth>
+          <DialogTitle>Deposit QR Code</DialogTitle>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4 }}>
+            <QRCode value="https://example.com/deposit" size={180} />
+            <Typography variant="body2" sx={{ mt: 2 }}>
+              Scan this QR code to deposit.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDepositModal}>Close</Button>
+          </DialogActions>
+        </Dialog>
+        {/* Withdraw Modal */}
+        <Dialog open={withdrawModalOpen} onClose={handleCloseWithdrawModal} maxWidth="xs" fullWidth>
+          <DialogTitle>Withdraw</DialogTitle>
+          <form onSubmit={handleWithdrawSubmit}>
+            <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, py: 2 }}>
+              <TextField
+                label="To Address"
+                name="toAddress"
+                value={withdrawForm.toAddress}
+                onChange={handleWithdrawFormChange}
+                fullWidth
+                required
+              />
+              <TextField
+                label="Amount"
+                name="amount"
+                value={withdrawForm.amount}
+                onChange={handleWithdrawFormChange}
+                fullWidth
+                required
+                type="number"
+                inputProps={{ min: 0, step: 'any' }}
+              />
+              <TextField
+                label="Private Key"
+                name="privateKey"
+                value={withdrawForm.privateKey}
+                onChange={handleWithdrawFormChange}
+                fullWidth
+                required
+                type="password"
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseWithdrawModal}>Close</Button>
+              <Button type="submit" variant="contained">Submit</Button>
+            </DialogActions>
+          </form>
+        </Dialog>
+        {/* Transaction Detail Modal */}
+        <Dialog open={transactionDetailModalOpen} onClose={handleCloseTransactionDetailModal} maxWidth="xs" fullWidth>
+          <DialogTitle>Transaction Details</DialogTitle>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, py: 2 }}>
+            {selectedTransaction && (
+              <>
+                <Typography><b>To Address:</b> {selectedTransaction.trxToAddr}</Typography>
+                <Typography><b>Amount:</b> {selectedTransaction.trxAmount}</Typography>
+                <Typography><b>Fee:</b> {selectedTransaction.trxFee}</Typography>
+                <TextField
+                  label="Private Key"
+                  type="password"
+                  value={transactionPrivateKey}
+                  onChange={e => setTransactionPrivateKey(e.target.value)}
+                  fullWidth
+                  required
+                />
+              </>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseTransactionDetailModal}>Cancel</Button>
+            <Button variant="contained" color="primary" onClick={handleAcceptTransaction} disabled={!transactionPrivateKey}>Accept</Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     </AppTheme>
   );
