@@ -34,6 +34,7 @@ import Avatar from '@mui/material/Avatar';
 import MoreVertIcon from '@mui/icons-material/MoreVert';    
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
+import { useRouter } from 'next/navigation';
 
 interface Asset {
   id: number;
@@ -116,6 +117,8 @@ const AssetAvatar = styled(Avatar)(() => ({
 type SortField = 'name' | 'balance';
 
 export default function Wallet(props: { disableCustomTheme?: boolean }) {
+  const router = useRouter();
+
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [totalBalance, setTotalBalance] = useState('0.00');
@@ -234,7 +237,7 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
   // 자산 생성 핸들러
   const handleCreateWallet = () => {
     // 지갑 생성 페이지로 이동
-    window.location.href = '/wallet/create';
+    router.push('/wallet/create');
   };
 
   const handleDeposit = (asset: Asset) => {

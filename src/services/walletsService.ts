@@ -17,6 +17,7 @@ export interface Wallet extends CommonFields {
   walType: WalletType;    // 지갑 타입
   walProtocol: WalletProtocol; // 지갑 프로토콜
   walStatus: WalletStatus; // 지갑 상태
+  wumRole: string;         // 지갑 역할
   astNum?: number;        // 자산 번호 (외래키)
   polNum?: number;        // 정책 번호 (외래키)
 }
@@ -220,8 +221,7 @@ export const checkWalletNameExists = async (walletName: string): Promise<boolean
  * @returns 해당 사용자의 지갑 목록
  */
 export const getWalletsByUser = async (usiNum: number): Promise<Wallet[]> => {
-  // 실제로는 WalUsiMapp 테이블을 통해 조회해야 함
-  const response = await apiGet<ApiResponse<Wallet[]>>(`/api/wal/user/${usiNum}`);
+  const response = await apiGet<ApiResponse<Wallet[]>>(`/api/wal/wad/list/${usiNum}`);
   return response.data || [];
 };
 
