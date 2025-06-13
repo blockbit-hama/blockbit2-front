@@ -50,10 +50,13 @@ import { brand, gray } from '@/theme/themePrimitives';
 import { fetchWithAuth } from '@/lib/auth';
 import { getAssetById, Asset } from '@/services/assetService';
 import { API_BASE_URL } from '@/config/environment';
-import { getWalletById } from '@/services/walletsService';
+import { getWalletById, getWalletUsersList } from '@/services/walletsService';
 import { Wallet } from '@/services/walletsService';
 import { getWalletAddressesByWallet, WalletAddress } from '@/services/walletAddressesService';
 import { getTransactionsByWallet, Transaction } from '@/services/transactionsService';
+import { getUserInfoList, getCurrentUser, UserInfo } from '@/services/userInfoService';
+import { getUserId } from '@/lib/auth';
+import { addUserToWallet as addUserToWalletService, removeUserFromWallet, WalletRole } from '@/services/walUsiMappService';
 
 const priceData: Record<string, {price: string, change24h: string}> = {
   'BTC': { price: '0', change24h: '0' },
@@ -168,9 +171,41 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
     open: false,
     type: 'deposit'
   });
+  const [users, setUsers] = useState<UserInfo[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [addUserModalOpen, setAddUserModalOpen] = useState(false);
+  const [allUsers, setAllUsers] = useState<UserInfo[]>([]);
+  const [allUsersLoading, setAllUsersLoading] = useState(false);
+  const [allUsersError, setAllUsersError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserInfo | null>(null);
+  const [deleteUserModalOpen, setDeleteUserModalOpen] = useState(false);
+  const [deleteUsers, setDeleteUsers] = useState<UserInfo[]>([]);
+  const [deleteUsersLoading, setDeleteUsersLoading] = useState(false);
+  const [deleteUsersError, setDeleteUsersError] = useState<string | null>(null);
+
+  const walletNum = React.useMemo(() => {
+    const n = Number(walletId);
+    return isNaN(n) ? undefined : n;
+  }, [walletId]);
 
   useEffect(() => {
     init();
+  }, []);
+
+  useEffect(() => {
+    if (tabValue === 3) {
+      setUsersLoading(true);
+      getWalletUsersList(parseInt(walletId || '0'))
+        .then(setUsers)
+        .catch(() => setUsersError('유저 목록을 불러오지 못했습니다.'))
+        .finally(() => setUsersLoading(false));
+    }
+  }, [tabValue]);
+
+  useEffect(() => {
+    // 현재 로그인한 사용자 정보 가져오기
+    getCurrentUser().then(setCurrentUser).catch(() => setCurrentUser(null));
   }, []);
 
   const init = async () => {
@@ -277,6 +312,58 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
 
   const handleWithdraw = () => {
     setTransactionDialog({ type: 'withdraw', open: true });
+  };
+
+  const handleOpenAddUserModal = async () => {
+    setAddUserModalOpen(true);
+    setAllUsersLoading(true);
+    setAllUsersError(null);
+    try {
+      const allUserList = await getUserInfoList();
+      const myUsiNum = getUserId();
+      setAllUsers(allUserList.filter(u => u.usiNum !== myUsiNum));
+    } catch {
+      setAllUsersError('유저 목록을 불러오지 못했습니다.');
+    } finally {
+      setAllUsersLoading(false);
+    }
+  };
+
+  const handleCloseAddUserModal = () => {
+    setAddUserModalOpen(false);
+  };
+
+  const addUserToWallet = async (usiNum: number, walNum: number, wum_role: WalletRole = 'viewer') => {
+    await addUserToWalletService(usiNum, walNum, wum_role);
+    // TODO: 성공 시 피드백/리로드 등 추가 가능
+  };
+
+  const handleOpenDeleteUserModal = async () => {
+    setDeleteUserModalOpen(true);
+    setDeleteUsersLoading(true);
+    setDeleteUsersError(null);
+    try {
+      if (walletNum !== undefined) {
+        const users = await getWalletUsersList(walletNum);
+        const myUsiNum = getUserId();
+        setDeleteUsers(users.filter(u => u.usiNum !== myUsiNum));
+      }
+    } catch {
+      setDeleteUsersError('유저 목록을 불러오지 못했습니다.');
+    } finally {
+      setDeleteUsersLoading(false);
+    }
+  };
+
+  const handleCloseDeleteUserModal = () => {
+    setDeleteUserModalOpen(false);
+  };
+
+  const handleDeleteUser = async (usiNum: number) => {
+    if (walletNum !== undefined) {
+      await removeUserFromWallet(usiNum, walletNum);
+      handleCloseDeleteUserModal();
+    }
   };
 
   return (
@@ -606,7 +693,7 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
                                 <ReceiptLongIcon sx={{ color: gray[500] }} />
                               </Box>
                               <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                You don&apos;`t have any transactions yet
+                                You don&apos;t have any transactions yet
                               </Typography>
                               <Typography variant="body2" color="text.secondary">
                                 Once you have transactions, you can view deposit and withdrawal activity here.
@@ -647,9 +734,161 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
             </TabPanel>
             
             <TabPanel value={tabValue} index={3}>
-              <Typography variant="body1">
-                Users tab content.
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, gap: 1 }}>
+                <Button variant="contained" onClick={handleOpenAddUserModal}>
+                  Add User
+                </Button>
+                <Button variant="outlined" color="error" onClick={handleOpenDeleteUserModal}>
+                  Delete User
+                </Button>
+              </Box>
+              {usersLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : usersError ? (
+                <Alert severity="error">{usersError}</Alert>
+              ) : (
+                <TableContainer component={Paper} sx={{ boxShadow: 'none', border: `1px solid ${gray[200]}` }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: gray[50] }}>
+                        <TableCell sx={{ fontWeight: 600 }}>No</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>ID</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {users.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} align="center">
+                            가입된 유저가 없습니다.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        users.map(user => (
+                          <TableRow key={user.usiNum}>
+                            <TableCell>{user.usiNum}</TableCell>
+                            <TableCell>{user.usiId}</TableCell>
+                            <TableCell>{user.usiName}</TableCell>
+                            <TableCell>{user.usiEmail}</TableCell>
+                            <TableCell>{user.usiPhoneNum}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+              {/* Add User Modal */}
+              <Dialog open={addUserModalOpen} onClose={handleCloseAddUserModal} maxWidth="sm" fullWidth>
+                <DialogTitle>Add User</DialogTitle>
+                <DialogContent>
+                  {allUsersLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                      <CircularProgress />
+                    </Box>
+                  ) : allUsersError ? (
+                    <Alert severity="error">{allUsersError}</Alert>
+                  ) : (
+                    <TableContainer component={Paper} sx={{ boxShadow: 'none', border: `1px solid ${gray[200]}` }}>
+                      <Table>
+                        <TableHead>
+                          <TableRow sx={{ backgroundColor: gray[50] }}>
+                            <TableCell>No</TableCell>
+                            <TableCell>ID</TableCell>
+                            <TableCell>Name</TableCell>
+                            <TableCell>Email</TableCell>
+                            <TableCell>Phone</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {allUsers.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={5} align="center">
+                                추가 가능한 유저가 없습니다.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            allUsers.map(user => (
+                              <TableRow key={user.usiNum} hover style={{ cursor: 'pointer' }}
+                                onClick={async () => {
+                                  if (walletNum !== undefined) {
+                                    await addUserToWallet(user.usiNum, walletNum, 'viewer');
+                                    handleCloseAddUserModal();
+                                  }
+                                }}
+                              >
+                                <TableCell>{user.usiNum}</TableCell>
+                                <TableCell>{user.usiId}</TableCell>
+                                <TableCell>{user.usiName}</TableCell>
+                                <TableCell>{user.usiEmail}</TableCell>
+                                <TableCell>{user.usiPhoneNum}</TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={handleCloseAddUserModal}>Close</Button>
+                </DialogActions>
+              </Dialog>
+              {/* Delete User Modal */}
+              <Dialog open={deleteUserModalOpen} onClose={handleCloseDeleteUserModal} maxWidth="sm" fullWidth>
+                <DialogTitle>Delete User</DialogTitle>
+                <DialogContent>
+                  {deleteUsersLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                      <CircularProgress />
+                    </Box>
+                  ) : deleteUsersError ? (
+                    <Alert severity="error">{deleteUsersError}</Alert>
+                  ) : (
+                    <TableContainer component={Paper} sx={{ boxShadow: 'none', border: `1px solid ${gray[200]}` }}>
+                      <Table>
+                        <TableHead>
+                          <TableRow sx={{ backgroundColor: gray[50] }}>
+                            <TableCell>No</TableCell>
+                            <TableCell>ID</TableCell>
+                            <TableCell>Name</TableCell>
+                            <TableCell>Email</TableCell>
+                            <TableCell>Phone</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {deleteUsers.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={5} align="center">
+                                삭제 가능한 유저가 없습니다.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            deleteUsers.map(user => (
+                              <TableRow key={user.usiNum} hover style={{ cursor: 'pointer' }}
+                                onClick={async () => await handleDeleteUser(user.usiNum)}
+                              >
+                                <TableCell>{user.usiNum}</TableCell>
+                                <TableCell>{user.usiId}</TableCell>
+                                <TableCell>{user.usiName}</TableCell>
+                                <TableCell>{user.usiEmail}</TableCell>
+                                <TableCell>{user.usiPhoneNum}</TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={handleCloseDeleteUserModal}>Close</Button>
+                </DialogActions>
+              </Dialog>
             </TabPanel>
             
             <TabPanel value={tabValue} index={4}>

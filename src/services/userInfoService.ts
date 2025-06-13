@@ -70,7 +70,7 @@ export interface LoginResponse {
  * @returns 사용자 목록
  */
 export const getUserInfoList = async (params?: ListParams): Promise<UserInfo[]> => {
-  const response = await apiGet<ApiResponse<UserInfo[]>>('/api/usi/list', params as Record<string, string | number | boolean>);
+  const response = await apiGet<ApiResponse<UserInfo[]>>('/api/users', params as Record<string, string | number | boolean>);
   return response.data || [];
 };
 

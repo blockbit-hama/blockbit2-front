@@ -1,126 +1,198 @@
-# BlockBit
+# 🚀 BlockBit Frontend
 
-BlockBit은 빠르고 안전한 디지털 자산 거래 플랫폼입니다. 최첨단 기술을 활용하여 번개처럼 빠른 거래, 최고 수준의 보안, 그리고 원활한 접근성을 제공합니다.
+BlockBit 디지털 자산 거래 플랫폼의 프론트엔드 애플리케이션입니다.
 
-## 🌟 프로젝트 개요
+최첨단 기술을 활용하여 번개처럼 빠른 거래, 최고 수준의 보안, 그리고 원활한 접근성을 제공하는 현대적인 웹 애플리케이션입니다.
 
-BlockBit은 다음과 같은 특징을 가진 디지털 자산 거래 플랫폼입니다:
+## 🛠️ 기술 스택
 
-- **빠른 거래**: 최적화된 엔진으로 빠른 거래 수행
-- **최고 수준의 보안**: 사용자 자산 보호를 위한 최첨단 보안 시스템
-- **직관적인 인터페이스**: 사용자 친화적인 디자인으로 쉽게 사용 가능
-- **다양한 거래 옵션**: 일반 거래부터 퀀트 거래까지 다양한 옵션 제공
+• **프레임워크**: Next.js 15.1.7 (App Router)
+• **UI 라이브러리**: React 19.0.0 + TypeScript
+• **디자인 시스템**: Material-UI 7.1.0
+• **스타일링**: Emotion (@emotion/react, @emotion/styled)
+• **인증**: 쿠키 기반 JWT 토큰 관리
+• **상태 관리**: React Hooks + Context API
 
-## 💻 기술 스택
+## 📦 주요 기능
 
-이 프로젝트는 다음과 같은 기술 스택으로 구축되었습니다:
+### 🏠 **랜딩 페이지**
+• **Hero 섹션**: "The World's Fastest BlockBit" 메인 메시지
+• **반응형 디자인**: 모바일부터 데스크톱까지 완벽 대응
+• **다크/라이트 테마**: 사용자 선호도에 따른 테마 전환
 
-- **Frontend**: Next.js (v15.1.7), React (v19.0.0), TypeScript
-- **UI 라이브러리**: Material-UI (v7.1.0)
-- **인증**: 자체 구현 인증 시스템 (쿠키 기반)
-- **스타일링**: Emotion (@emotion/react, @emotion/styled)
+### 🔐 **인증 시스템**
+• **로그인/회원가입**: 이메일 기반 인증
+• **소셜 로그인**: Google, Facebook 연동 준비
+• **토큰 관리**: 쿠키 기반 보안 토큰 저장
+• **미들웨어**: 자동 인증 검증 및 리다이렉트
 
-## 🚀 프로젝트 구조
+### 💼 **지갑 관리**
+• **자산 조회**: 실시간 디지털 자산 현황
+• **거래 내역**: 상세한 트랜잭션 히스토리
+• **지갑 주소**: 다중 지갑 주소 관리
+• **보안 기능**: 멀티시그 지갑 지원
+
+### 📰 **블로그 & 정보**
+• **뉴스 피드**: 최신 암호화폐 동향
+• **교육 콘텐츠**: 블록체인 가이드
+• **마켓 인사이트**: 시장 분석 정보
+
+## 🏗️ 프로젝트 구조
 
 ```
-blockbit/
-├── public/            # 정적 파일 (이미지, 아이콘 등)
+blockbit2-front/
+├── public/                    # 정적 파일
+│   ├── hero-bg.png           # 히어로 배경 이미지
+│   ├── logo.png              # 로고 파일
+│   └── icons/                # SVG 아이콘들
+│       ├── quant.svg         # 퀀트 트레이딩 아이콘
+│       ├── trade.svg         # 거래 아이콘
+│       └── wallet.svg        # 지갑 아이콘
 ├── src/
-│   ├── app/           # Next.js App Router 페이지
-│   ├── components/    # 재사용 가능한 컴포넌트
-│   ├── config/        # 설정 파일
-│   ├── lib/           # 유틸리티 및 헬퍼 함수
-│   ├── services/      # API 서비스
-│   ├── theme/         # Material UI 테마 설정
-│   └── middleware.ts  # Next.js 미들웨어
-├── package.json       # 의존성 및 스크립트
-└── tsconfig.json      # TypeScript 설정
+│   ├── app/                  # Next.js App Router
+│   │   ├── BlockBitLanding.tsx  # 메인 랜딩 컴포넌트
+│   │   ├── layout.tsx        # 전역 레이아웃
+│   │   ├── page.tsx          # 홈페이지
+│   │   ├── login/            # 로그인 페이지
+│   │   ├── signup/           # 회원가입 페이지
+│   │   ├── wallet/           # 지갑 페이지
+│   │   └── blog/             # 블로그 페이지
+│   ├── components/           # 재사용 컴포넌트
+│   │   ├── AppAppBar.tsx     # 네비게이션 바
+│   │   ├── Hero.tsx          # 히어로 섹션
+│   │   ├── Features.tsx      # 기능 소개
+│   │   ├── Pricing.tsx       # 가격 정책
+│   │   ├── FAQ.tsx           # 자주 묻는 질문
+│   │   └── Footer.tsx        # 푸터
+│   ├── services/             # API 서비스 계층
+│   │   ├── apiService.ts     # 공통 API 요청
+│   │   ├── userInfoService.ts # 사용자 관리
+│   │   ├── walletsService.ts # 지갑 관리
+│   │   └── transactionsService.ts # 거래 관리
+│   ├── lib/                  # 유틸리티
+│   │   ├── auth.ts           # 인증 헬퍼
+│   │   └── priceService.ts   # 가격 정보
+│   ├── theme/                # Material-UI 테마
+│   │   ├── AppTheme.tsx      # 메인 테마
+│   │   └── themePrimitives.ts # 테마 기본값
+│   ├── types/                # TypeScript 타입
+│   │   └── common.ts         # 공통 타입 정의
+│   └── middleware.ts         # Next.js 미들웨어
+└── package.json              # 의존성 관리
 ```
 
-## 📋 주요 기능
+## 🎨 UI/UX 특징
 
-### 홈페이지
-- 메인 랜딩 페이지는 Hero 섹션, 특징, 로고 컬렉션, 고객 후기, 가격 정책, FAQ 등의 섹션으로 구성됩니다.
-- AppAppBar는 로그인 상태에 따라 다른 네비게이션 옵션을 제공합니다.
+### **Material Design 3.0**
+- 최신 Material-UI 컴포넌트 활용
+- 일관된 디자인 시스템 적용
+- 접근성(Accessibility) 고려
 
-### 인증 시스템
-- 이메일/비밀번호 기반 로그인
-- 쿠키 기반의 인증 토큰 관리
-- 사용자 세션 관리
-- 구글, 페이스북 소셜 로그인 지원 (준비 중)
+### **반응형 디자인**
+- 모바일 퍼스트 접근법
+- 태블릿, 데스크톱 최적화
+- 유연한 그리드 시스템
 
-### 지갑 기능
-- 디지털 자산 관리
-- 자산 조회
-- 거래 내역 확인
+### **다크 테마 지원**
+- 시스템 설정 자동 감지
+- 사용자 선호도 저장
+- 부드러운 테마 전환 애니메이션
 
-### 블로그
-- 최신 암호화폐 뉴스 및 정보 제공
-- 교육 콘텐츠
+## 🔧 개발 환경 구성
 
-## 🔧 설치 및 실행 방법
-
-### 필수 요구 사항
-- Node.js 14.0.0 이상
-- npm 또는 yarn
-
-### 설치 단계
-
-1. 레포지토리 클론
 ```bash
-git clone https://github.com/blockbit-hama/blockbit-front.git
-cd blockbit
-```
-
-2. 의존성 설치
-```bash
+# 의존성 설치
 npm install
-# 또는
-yarn install
-```
 
-3. 개발 서버 실행
-```bash
+# 개발 서버 실행
 npm run dev
-# 또는
-yarn dev
-```
 
-4. 브라우저에서 확인
-```
-http://localhost:3000
-```
-
-## 🔨 빌드 방법
-
-프로덕션 배포를 위한 빌드:
-
-```bash
+# 프로덕션 빌드
 npm run build
-# 또는
-yarn build
-```
 
-빌드된 애플리케이션 실행:
-
-```bash
+# 프로덕션 서버 실행
 npm run start
-# 또는
-yarn start
+
+# 코드 린팅
+npm run lint
 ```
 
-## 👩‍💻 개발 가이드
+## 🌐 API 연동
 
-### 코드 스타일
-- TypeScript를 사용한 정적 타입 체크
-- Material UI 컴포넌트 시스템 준수
-- 재사용 가능한 컴포넌트 설계
+### **백엔드 통신**
+- **Base URL**: 환경변수로 관리
+- **인증**: Bearer 토큰 기반
+- **에러 처리**: 통합 에러 핸들링
+- **타입 안정성**: TypeScript 완전 지원
 
-### 디렉토리 구조
-- `/src/app`: 페이지 레이아웃 및 라우팅
-- `/src/components`: 재사용 가능한 UI 컴포넌트
-- `/src/lib`: 유틸리티 함수 및 헬퍼
-- `/src/theme`: Material UI 테마 구성
+### **주요 API 서비스**
+```typescript
+// 사용자 관리
+userInfoService.ts
+- 로그인/로그아웃
+- 회원가입
+- 프로필 관리
 
-### API 요청 가이드
-- `/src/lib/auth.ts`의 `fetchWithAuth` 함수를 사용하여 인증이 필요한 API 요청 처리
+// 지갑 관리  
+walletsService.ts
+- 지갑 생성/조회
+- 잔액 확인
+- 주소 관리
+
+// 거래 관리
+transactionsService.ts
+- 거래 내역 조회
+- 송금/수신
+- 트랜잭션 상태 확인
+```
+
+## 🚀 배포 및 운영
+
+### **빌드 최적화**
+- **Tree Shaking**: 사용하지 않는 코드 제거
+- **Code Splitting**: 동적 import로 번들 크기 최적화
+- **이미지 최적화**: Next.js Image 컴포넌트 활용
+- **SEO 최적화**: 메타 태그 및 구조화 데이터
+
+### **성능 모니터링**
+- **Core Web Vitals**: 사용자 경험 지표 추적
+- **번들 크기 분석**: 정기적인 번들 사이즈 모니터링
+- **렌더링 성능**: React DevTools를 통한 최적화
+
+## 📱 모바일 지원
+
+### **Progressive Web App (PWA) 준비**
+- 서비스 워커 설정 준비
+- 오프라인 기능 고려
+- 푸시 알림 인프라
+
+### **터치 최적화**
+- 터치 친화적 UI 요소
+- 스와이프 제스처 지원
+- 적절한 터치 타겟 크기
+
+## 🔒 보안 고려사항
+
+### **클라이언트 보안**
+- **XSS 방지**: 입력값 검증 및 이스케이프
+- **CSRF 보호**: 토큰 기반 요청 검증
+- **쿠키 보안**: HttpOnly, Secure 플래그 적용
+- **Content Security Policy**: 악성 스크립트 차단
+
+## 💡 개발자 가이드
+
+### **컴포넌트 개발 원칙**
+- **재사용성**: 범용적으로 사용 가능한 컴포넌트 설계
+- **단일 책임**: 하나의 기능에 집중하는 컴포넌트
+- **타입 안정성**: Props 및 State의 명확한 타입 정의
+
+### **성능 최적화 팁**
+- **React.memo**: 불필요한 리렌더링 방지
+- **useMemo/useCallback**: 계산 결과 및 함수 메모이제이션
+- **Lazy Loading**: 컴포넌트 지연 로딩
+
+---
+
+*Built with ❤️ using Next.js & Material-UI*
+
+*"The World's Fastest Digital Asset Platform"*

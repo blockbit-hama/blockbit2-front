@@ -1,5 +1,6 @@
 import { apiGet, apiPost, apiPut, apiDelete } from './apiService';
 import { CommonFields, ListParams, CreateResponse, SimpleResponse, ApiResponse } from '@/types/common';
+import { getUserInfoList, UserInfo } from '@/services/userInfoService';
 
 /**
  * 지갑 타입 정의
@@ -255,4 +256,19 @@ export const getWalletStats = async (): Promise<{
       'Multisig': activeWallets.filter(w => w.walProtocol === 'Multisig').length,
     }
   };
+};
+
+/**
+ * 특정 지갑과 연관된 사용자 목록 조회
+ * GET /api/wal/users/list/{walNum}
+ * @param walNum 지갑 번호
+ * @param params (선택) 페이징 파라미터 (offset, limit)
+ * @returns 사용자 목록
+ */
+export const getWalletUsersList = async (
+  walNum: number,
+  params?: { offset?: number; limit?: number }
+): Promise<UserInfo[]> => {
+  const response = await apiGet<ApiResponse<UserInfo[]>>(`/api/wal/users/list/${walNum}`, params as Record<string, string | number | boolean>);
+  return response.data || [];
 };
