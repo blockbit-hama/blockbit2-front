@@ -48,117 +48,21 @@ import AppTheme from '@/theme/AppTheme';
 import AppAppBar from '@/components/AppAppBar';
 import { brand, gray } from '@/theme/themePrimitives';
 import { fetchWithAuth } from '@/lib/auth';
-import { getWalletById, Wallet } from '@/services/walletService';
 import { getAssetById, Asset } from '@/services/assetService';
-import { fetchAddresses, Address } from '@/services/addressService';
 import { API_BASE_URL } from '@/config/environment';
+import { getWalletById } from '@/services/walletsService';
+import { Wallet } from '@/services/walletsService';
+import { getWalletAddressesByWallet, WalletAddress } from '@/services/walletAddressesService';
+import { getTransactionsByWallet, Transaction } from '@/services/transactionsService';
 
-// Price data mapping (should be fetched from a separate API in real implementation)
 const priceData: Record<string, {price: string, change24h: string}> = {
-  'BTC': { price: '$97,322.81', change24h: '+1.2%' },
-  'ETH': { price: '$1,827.29', change24h: '-0.5%' },
-  'USDT': { price: '$1.00', change24h: '0.0%' },
-  'BNB': { price: '$594.90', change24h: '+0.8%' },
-  'SOL': { price: '$145.42', change24h: '+3.2%' },
-  'USD': { price: '$1.00', change24h: '0.0%' }
+  'BTC': { price: '0', change24h: '0' },
+  'ETH': { price: '0', change24h: '0' }
 };
-
-// Styled components
-const InfoCard = styled(Card)(({ theme }) => ({
-  marginBottom: theme.spacing(2),
-  boxShadow: 'none',
-  border: `1px solid ${theme.palette.divider}`,
-}));
-
-const InfoItem = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  marginBottom: theme.spacing(2),
-}));
-
-const InfoLabel = styled(Typography)(({ theme }) => ({
-  color: theme.palette.text.secondary,
-  fontSize: '14px',
-  fontWeight: 400,
-}));
-
-const InfoValue = styled(Typography)(() => ({
-  fontSize: '16px',
-  fontWeight: 500,
-}));
-
-const ActionButton = styled(Button)(({ theme }) => ({
-  borderRadius: theme.shape.borderRadius,
-  padding: theme.spacing(0.5, 2),
-  fontWeight: 600,
-  textTransform: 'none',
-  fontSize: '14px',
-}));
-
-// Wallet icon component
-const WalletIcon = styled('div')(() => ({
-  width: 60,
-  height: 60,
-  borderRadius: '50%',
-  backgroundColor: brand[100],
-  color: brand[600],
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontWeight: 'bold',
-  fontSize: '24px',
-}));
-
-// Cryptocurrency icon component
-const CoinIcon = styled('div')(() => ({
-  width: 40,
-  height: 40,
-  borderRadius: '50%',
-  backgroundColor: '#F7931A20',
-  color: '#F7931A',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontWeight: 'bold',
-  fontSize: '20px',
-}));
-
-// Balance API response type
-interface ApiBalance {
-  balNum: number;
-  adrId: number;
-  astId: number;
-  balBefore: number;
-  balAfter: number;
-  balConfirmed: number;
-  balPending: number;
-  creusr: number;
-  credat: string;
-  cretim: string;
-  active: string;
-}
-
-// Transaction API response type
-interface ApiTransaction {
-  trxNum: number;
-  trxHash: string;
-  trxType: string;
-  trxAmount: number;
-  trxFee: number;
-  trxStatus: string;
-  trxConfirmedAt: string;
-  trxMemo: string;
-  walId: number;
-  astId: number;
-  creusr: number;
-  credat: string;
-  cretim: string;
-  active: string;
-}
 
 interface WalletWithDetails extends Wallet {
   asset?: Asset;
-  addresses: Address[];
+  addresses: WalletAddress[];
   balance: number;
   balanceUsd: string;
   formattedId?: string;
@@ -191,97 +95,72 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-function a11yProps(index: number) {
-  return {
-    id: `wallet-tab-${index}`,
-    'aria-controls': `wallet-tabpanel-${index}`,
-  };
-}
+const ActionButton = styled(Button)(({ theme }) => ({
+  borderRadius: theme.shape.borderRadius,
+  padding: theme.spacing(0.5, 2),
+  fontWeight: 600,
+  textTransform: 'none',
+  fontSize: '14px',
+}));
 
-// 인터페이스 추가
-interface TransactionDialogProps {
-  open: boolean;
-  type: 'deposit' | 'withdraw';
-  onClose: () => void;
-  onSubmit: (amount: number, memo: string) => void;
-  symbol: string;
-}
+const InfoCard = styled(Card)(({ theme }) => ({
+  marginBottom: theme.spacing(2),
+  boxShadow: 'none',
+  border: `1px solid ${theme.palette.divider}`,
+}));
 
-// 트랜잭션 다이얼로그 컴포넌트
-const TransactionDialog = ({ open, type, onClose, onSubmit, symbol }: TransactionDialogProps) => {
-  const [amount, setAmount] = useState<string>('');
-  const [memo, setMemo] = useState<string>('');
+const InfoItem = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  marginBottom: theme.spacing(2),
+}));
 
-  const handleSubmit = () => {
-    onSubmit(Number(amount), memo);
-    setAmount('');
-    setMemo('');
-  };
+const InfoLabel = styled(Typography)(({ theme }) => ({
+  color: theme.palette.text.secondary,
+  fontSize: '14px',
+  fontWeight: 400,
+}));
 
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{type === 'deposit' ? 'Deposit' : 'Withdraw'} {symbol}</DialogTitle>
-      <DialogContent>
-        <FormControl fullWidth sx={{ mt: 2 }}>
-          <InputLabel>Amount</InputLabel>
-          <OutlinedInput
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            endAdornment={<InputAdornment position="end">{symbol}</InputAdornment>}
-            label="Amount"
-          />
-        </FormControl>
-        <FormControl fullWidth sx={{ mt: 2 }}>
-          <InputLabel>Memo</InputLabel>
-          <OutlinedInput
-            value={memo}
-            onChange={(e) => setMemo(e.target.value)}
-            label="Memo"
-            multiline
-            rows={2}
-          />
-        </FormControl>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button 
-          onClick={handleSubmit} 
-          variant="contained"
-          disabled={!amount || Number(amount) <= 0}
-        >
-          Confirm {type === 'deposit' ? 'Deposit' : 'Withdraw'}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
+const InfoValue = styled(Typography)(() => ({
+  fontSize: '16px',
+  fontWeight: 500,
+}));
 
-/**
- * 트랜잭션 해시 생성 함수
- * @returns 0x로 시작하는 64자리 16진수 문자열
- */
-const generateTransactionHash = (): string => {
-  // 32바이트(64자) 랜덤 16진수 문자열 생성
-  const randomHex = Array.from(
-    { length: 64 },
-    () => Math.floor(Math.random() * 16).toString(16)
-  ).join('');
-  
-  return `0x${randomHex}`;
-};
+const WalletIcon = styled('div')(() => ({
+  width: 60,
+  height: 60,
+  borderRadius: '50%',
+  backgroundColor: brand[100],
+  color: brand[600],
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontWeight: 'bold',
+  fontSize: '24px',
+}));
+
+const CoinIcon = styled('div')(() => ({
+  width: 40,
+  height: 40,
+  borderRadius: '50%',
+  backgroundColor: '#F7931A20',
+  color: '#F7931A',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontWeight: 'bold',
+  fontSize: '20px',
+}));
 
 export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const walletId = searchParams.get('id');
   const assetSymbol = searchParams.get('symbol');
-  
+  const walletId = searchParams.get('id');
   const [walletData, setWalletData] = useState<WalletWithDetails | null>(null);
-  const [transactions, setTransactions] = useState<ApiTransaction[]>([]);
-  const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [tabValue, setTabValue] = useState(0);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [transactionDialog, setTransactionDialog] = useState<{
     open: boolean;
     type: 'deposit' | 'withdraw';
@@ -289,83 +168,21 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
     open: false,
     type: 'deposit'
   });
-  
-  // Get wallet data
+
   useEffect(() => {
-    if (!walletId) {
-      router.push('/wallet');
-      return;
-    }
-    
-    fetchWalletData(Number(walletId));
-  }, [walletId, router]);
+    init();
+  }, []);
 
-  // Tab change handler
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
-
-  // 잔액 데이터 가져오기
-  const fetchBalance = async (addressId: number, assetId: number) => {
+  const init = async () => {
     try {
-      const response = await fetchWithAuth(`${API_BASE_URL}/api/balances/address/${addressId}`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch balance: ${response.status}`);
-      }
-      
-      const balanceDataArray: ApiBalance[] = await response.json();
-      
-      if (balanceDataArray.length === 0) {
-        return null;
-      }
-      
-      const matchingBalances = balanceDataArray.filter(bal => bal.astId === assetId);
-      
-      if (matchingBalances.length === 0) {
-        return null;
-      }
-      
-      return matchingBalances.reduce((latest, current) => {
-        if (current.credat > latest.credat) {
-          return current;
-        } else if (current.credat < latest.credat) {
-          return latest;
-        }
-        
-        if (current.cretim > latest.cretim) {
-          return current;
-        } else {
-          return latest;
-        }
-      });
-    } catch (err) {
-      console.error(`Error fetching balance for address ID ${addressId}:`, err);
-      return null;
-    }
-  };
+      fetchWalletData(Number(walletId));
+    } catch (error) {
 
-  // 트랜잭션 데이터 가져오기
-  const fetchTransactions = async (walletId: number) => {
-    try {
-      const response = await fetchWithAuth(`${API_BASE_URL}/api/transactions/wallet/${walletId}`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch transactions: ${response.status}`);
-      }
-      
-      const transactionsData: ApiTransaction[] = await response.json();
-      return transactionsData;
-    } catch (err) {
-      console.error(`Error fetching transactions for wallet ${walletId}:`, err);
-      return [];
     }
-  };
+  }
 
-  // 지갑 데이터 가져오기
   const fetchWalletData = async (walletId: number) => {
     setLoading(true);
-    setError(null);
     
     try {
       // 지갑 정보 가져오기
@@ -376,10 +193,10 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
       }
       
       // 자산 정보 가져오기
-      const asset = await getAssetById(wallet.astId);
+      const asset = await getAssetById(wallet.astNum || 0);
       
       // 주소 목록 가져오기
-      const addresses = await fetchAddresses(walletId);
+      const addresses = await getWalletAddressesByWallet(walletId);
       
       // 잔액 계산
       let totalConfirmedBalance = 0;
@@ -387,28 +204,28 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
       
       if (addresses.length > 0) {
         // 각 주소의 잔액 가져오기
-        const balancePromises = addresses.map(addr => fetchBalance(addr.adrNum || 0, wallet.astId));
-        const balanceResults = await Promise.all(balancePromises);
+        // const balancePromises = addresses.map(addr => fetchBalance(addr.adrNum || 0, wallet.astId));
+        // const balanceResults = await Promise.all(balancePromises);
         
         // 잔액 합산
-        balanceResults.forEach(balanceData => {
-          if (balanceData) {
-            totalConfirmedBalance += balanceData.balConfirmed;
-            
-            // USD 가치 계산
-            const priceValue = parseFloat(priceData[asset?.astSymbol || 'BTC']?.price.replace('$', '').replace(',', '') || '0');
-            const balanceValue = balanceData.balConfirmed * priceValue / Math.pow(10, asset?.astDecimals || 8);
-            totalUsdValue += balanceValue;
-          }
-        });
+        // balanceResults.forEach(balanceData => {
+        //   if (balanceData) {
+        //     totalConfirmedBalance += balanceData.balConfirmed;
+        //     
+        //     // USD 가치 계산
+        //     const priceValue = parseFloat(priceData[asset?.astSymbol || 'BTC']?.price.replace('$', '').replace(',', '') || '0');
+        //     const balanceValue = balanceData.balConfirmed * priceValue / Math.pow(10, asset?.astDecimals || 8);
+        //     totalUsdValue += balanceValue;
+        //   }
+        // });
       }
       
       // 트랜잭션 내역 가져오기
-      const transactionsData = await fetchTransactions(walletId);
+      const transactionsData = await getTransactionsByWallet(walletId);
       setTransactions(transactionsData);
-      
+
       // 지갑 ID 포맷팅 (68144d00471ca4f52d32dc22ae9b5e81 형식)
-      const formattedId = `${(wallet.walNum || 0).toString(16).padStart(8, '0')}${(wallet.usiNum || 0).toString(16).padStart(8, '0')}${(wallet.astId).toString(16).padStart(8, '0')}${(wallet.polId).toString(16).padStart(8, '0')}`;
+      const formattedId = addresses[0].wadAddress;
       
       // 생성 날짜 포맷팅 (2025. 5. 2. 오후 1시 41분 36초 GMT+9)
       const creationDate = new Date();
@@ -434,108 +251,26 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
       });
     } catch (err) {
       console.error('Error fetching wallet data:', err);
-      setError('An error occurred while loading wallet data. Please check your network connection.');
     } finally {
       setLoading(false);
     }
   };
 
-  // 주소 복사
+  function a11yProps(index: number) {
+    return {
+      id: `wallet-tab-${index}`,
+      'aria-controls': `wallet-tabpanel-${index}`,
+    };
+  }
+
   const handleCopyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
   };
 
-  // 트랜잭션 처리 함수
-  const handleTransaction = async (amount: number, memo: string) => {
-    try {
-      // 1. 트랜잭션 생성
-      const trxHash = generateTransactionHash();
-      const transactionResponse = await fetchWithAuth(
-        `${API_BASE_URL}/api/transactions`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            trxHash,
-            trxType: transactionDialog.type,
-            trxAmount: amount,
-            trxFee: 0.0001,
-            trxStatus: 'pending',
-            trxMemo: memo,
-            walId: Number(walletId),
-            astId: walletData?.asset?.astNum
-          })
-        }
-      );
-
-      if (!transactionResponse.ok) {
-        throw new Error('Failed to create transaction');
-      }
-
-      const transactionData = await transactionResponse.json();
-
-      // 2. 승인 기록 생성
-      const approvalResponse = await fetchWithAuth(
-        `${API_BASE_URL}/api/approvals`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            trxId: transactionData.trxNum,
-            usiNum: 1, // 현재 로그인한 사용자 ID
-            aprStatus: 'pending',
-            aprComment: `${transactionDialog.type} approval request`
-          })
-        }
-      );
-
-      if (!approvalResponse.ok) {
-        throw new Error('Failed to create approval');
-      }
-
-      // 3. 잔액 기록 생성
-      const balanceResponse = await fetchWithAuth(
-        `${API_BASE_URL}/api/balances`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            adrId: walletData?.addresses[0]?.adrNum,
-            astId: walletData?.asset?.astNum,
-            balBefore: walletData?.balance || 0,
-            balAfter: transactionDialog.type === 'deposit' 
-              ? (walletData?.balance || 0) + amount
-              : (walletData?.balance || 0) - amount,
-            balConfirmed: transactionDialog.type === 'deposit' 
-              ? (walletData?.balance || 0) + amount
-              : (walletData?.balance || 0) - amount,
-            balPending: 0
-          })
-        }
-      );
-
-      if (!balanceResponse.ok) {
-        throw new Error('Failed to update balance');
-      }
-
-      // 성공 처리
-      setTransactionDialog({ ...transactionDialog, open: false });
-      // 지갑 데이터 새로고침
-      fetchWalletData(Number(walletId));
-
-    } catch (error) {
-      console.error('Transaction failed:', error);
-      setError('Failed to process transaction. Please try again.');
-    }
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
   };
 
-  // 버튼 클릭 핸들러 수정
   const handleDeposit = () => {
     setTransactionDialog({ type: 'deposit', open: true });
   };
@@ -581,14 +316,7 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
           )}
           <Typography color="text.primary">{walletData?.walName || 'Wallet Details'}</Typography>
         </Breadcrumbs>
-        
-        {/* 에러 메시지 */}
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
-        
+
         {/* 로딩 상태 */}
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
@@ -620,12 +348,6 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
                     >
                       <ContentCopyIcon fontSize="small" />
                     </IconButton>
-                    <Button 
-                      size="small" 
-                      sx={{ ml: 2, textTransform: 'none', fontWeight: 400 }}
-                    >
-                      Show Less
-                    </Button>
                   </Typography>
                 </Box>
               </Box>
@@ -860,15 +582,17 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
                   <Table>
                     <TableHead>
                       <TableRow sx={{ backgroundColor: gray[50] }}>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Type</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Trx ID</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>To Address</TableCell>
                         <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Amount</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Details</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Fee</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: 'text.secondary', fontSize: '13px' }}>Status</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {transactions.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={3} align="center" sx={{ py: 6 }}>
+                          <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
                             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                               <Box sx={{ 
                                 width: 60, 
@@ -896,9 +620,11 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
                       ) : (
                         transactions.map((transaction) => (
                           <TableRow key={transaction.trxNum}>
-                            <TableCell>{transaction.trxType}</TableCell>
-                            <TableCell>{transaction.trxAmount} {walletData.asset?.astSymbol || 'BTC'}</TableCell>
-                            <TableCell>{transaction.trxMemo}</TableCell>
+                            <TableCell>{transaction.trxTxId}</TableCell>
+                            <TableCell>{transaction.trxToAddr}</TableCell>
+                            <TableCell>{transaction.trxAmount}</TableCell>
+                            <TableCell>{transaction.trxFee}</TableCell>
+                            <TableCell>{transaction.trxStatus}</TableCell>
                           </TableRow>
                         ))
                       )}
@@ -942,15 +668,6 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
           <Alert severity="error">
             Wallet information not found.
           </Alert>
-        )}
-        {walletData && (
-          <TransactionDialog
-            open={transactionDialog.open}
-            type={transactionDialog.type}
-            onClose={() => setTransactionDialog({ ...transactionDialog, open: false })}
-            onSubmit={handleTransaction}
-            symbol={walletData.asset?.astSymbol || 'BTC'}
-          />
         )}
       </Container>
     </AppTheme>

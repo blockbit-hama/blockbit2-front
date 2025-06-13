@@ -280,20 +280,10 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
             {snackbar.message}
           </Alert>
         </Snackbar>
-        
-        {/* 총 자산 가치 영역 */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>
-            {totalBalance} USD
-          </Typography>
-          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            Total value of all your assets
-          </Typography>
-        </Box>
 
         {/* 자산 목록 영역 */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
+          <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>
             Assets
           </Typography>
           
@@ -449,24 +439,7 @@ export default function Wallet(props: { disableCustomTheme?: boolean }) {
                       
                       {/* 액션 버튼 */}
                       <TableCell align="right">
-                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                          <ActionButton 
-                            variant="outlined" 
-                            onClick={() => handleDeposit(asset)}
-                          >
-                            Deposit
-                          </ActionButton>
-                          <ActionButton 
-                            variant="outlined" 
-                            onClick={() => handleWithdraw(asset)}
-                            disabled={asset.balance === `0 ${asset.symbol}`}
-                          >
-                            Withdraw
-                          </ActionButton>
-                          <IconButton size="small">
-                            <MoreVertIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
+                        
                       </TableCell>
                     </TableRow>
                   ))
