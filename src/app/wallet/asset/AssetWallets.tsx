@@ -43,6 +43,9 @@ import { getAssetBySymbol } from '@/services/assetService';
 import { API_BASE_URL } from '@/config/environment';
 import { getWalletsByUser } from '@/services/walletsService';
 import { getWalletMappingsByUser } from '@/services/walUsiMappService';
+import { getWalletAddressesByWallet } from '@/services/walletAddressesService';
+import { getBitcoinAddressBalance } from '@/services/walletsService';
+import { getBitcoinPrice } from '@/lib/priceService';
 
 interface WalletData {
   walNum: number;
@@ -54,6 +57,7 @@ interface WalletData {
   astNum: number;
   balance: number;
   balanceUsd: string;
+  wadAddress: string;
 }
 
 const WalletIcon = styled('div')(() => ({
@@ -82,6 +86,7 @@ export default function AssetWallets(props: { disableCustomTheme?: boolean }) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [sortBy, setSortBy] = useState<'walName' | 'balance'>('walName');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [btcPrice, setBtcPrice] = useState<number>(0);
   
   const open = Boolean(anchorEl);
 
@@ -123,12 +128,29 @@ export default function AssetWallets(props: { disableCustomTheme?: boolean }) {
         wallet.astNum === asset.astNum
       );
 
-      // 5. 각 지갑의 잔액 정보 가져오기
+      // 비트코인 시세 가져오기 (한 번만)
+      let price = btcPrice;
+      if (!btcPrice) {
+        const priceData = await getBitcoinPrice();
+        price = priceData.price;
+        setBtcPrice(price);
+      }
+
+      // 각 지갑의 대표 주소의 잔액 가져오기
       const walletsWithBalance = await Promise.all(
         walletsData.map(async (wallet) => {
-          let totalConfirmedBalance = 0;
-          let totalUsdValue = 0;
-
+          let balance = 0;
+          let formattedBalance = '0';
+          let wadAddress = '';
+          try {
+            const addresses = await getWalletAddressesByWallet(wallet.walNum || 0);
+            if (addresses.length > 0) {
+              wadAddress = addresses[0].wadAddress;
+              const res = await getBitcoinAddressBalance(wadAddress);
+              balance = parseFloat(res.formattedBalance);
+              formattedBalance = res.formattedBalance;
+            }
+          } catch {}
           return {
             walNum: wallet.walNum || 0,
             walName: wallet.walName || '',
@@ -137,8 +159,9 @@ export default function AssetWallets(props: { disableCustomTheme?: boolean }) {
             walStatus: wallet.walStatus || '',
             wumRole: wallet.wumRole || '',
             astNum: asset.astNum || 0,
-            balance: totalConfirmedBalance,
-            balanceUsd: `$${totalUsdValue.toFixed(2)} USD`
+            balance,
+            balanceUsd: `$${(balance * price).toFixed(2)} USD`,
+            wadAddress,
           };
         })
       );
@@ -146,7 +169,8 @@ export default function AssetWallets(props: { disableCustomTheme?: boolean }) {
       setWallets(walletsWithBalance);
       
       // 총 자산 가치 계산
-      // calculateTotalBalance(walletsWithBalance, assetSymbol);
+      const total = walletsWithBalance.reduce((sum, w) => sum + (typeof w.balance === 'number' ? w.balance * price : 0), 0);
+      setTotalBalance(`$${total.toFixed(2)} USD`);
       
       if (refreshing) {
         setRefreshing(false);

@@ -300,3 +300,19 @@ export const completeBitcoinTransaction = async (params: {
 }): Promise<any> => {
   return apiPost<any, typeof params>('/api/wallet/bitcoin/transaction/complete', params);
 };
+
+/**
+ * 비트코인 주소 잔액 조회
+ * GET /api/wallet/bitcoin/balance/{address}
+ * @param address 비트코인 주소
+ * @returns 잔액 정보
+ */
+export const getBitcoinAddressBalance = async (address: string): Promise<{
+  address: string;
+  network: string;
+  balance: string;
+  formattedBalance: string;
+  unit: string;
+}> => {
+  return apiGet(`/api/wallet/bitcoin/balance/${address}`);
+};

@@ -50,7 +50,7 @@ import { brand, gray } from '@/theme/themePrimitives';
 import { fetchWithAuth } from '@/lib/auth';
 import { getAssetById, Asset } from '@/services/assetService';
 import { API_BASE_URL } from '@/config/environment';
-import { getWalletById, getWalletUsersList, createBitcoinTransaction, completeBitcoinTransaction } from '@/services/walletsService';
+import { getWalletById, getWalletUsersList, createBitcoinTransaction, completeBitcoinTransaction, getBitcoinAddressBalance } from '@/services/walletsService';
 import { Wallet } from '@/services/walletsService';
 import { getWalletAddressesByWallet, WalletAddress } from '@/services/walletAddressesService';
 import { getTransactionsByWallet, Transaction } from '@/services/transactionsService';
@@ -58,6 +58,7 @@ import { getUserInfoList, UserInfo } from '@/services/userInfoService';
 import { getUserId } from '@/lib/auth';
 import { addUserToWallet as addUserToWalletService, removeUserFromWallet, WalletRole } from '@/services/walUsiMappService';
 import QRCode from 'react-qr-code';
+import { getBitcoinPrice } from '@/lib/priceService';
 
 const priceData: Record<string, {price: string, change24h: string}> = {
   'BTC': { price: '0', change24h: '0' },
@@ -194,6 +195,10 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
   const [transactionDetailModalOpen, setTransactionDetailModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [transactionPrivateKey, setTransactionPrivateKey] = useState('');
+  const [btcBalance, setBtcBalance] = useState<string>('0');
+  const [btcBalanceFormatted, setBtcBalanceFormatted] = useState<string>('0');
+  const [btcUnit, setBtcUnit] = useState<string>('BTC');
+  const [btcPrice, setBtcPrice] = useState<number>(0);
 
   const walletNum = React.useMemo(() => {
     const n = Number(walletId);
@@ -213,6 +218,22 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
         .finally(() => setUsersLoading(false));
     }
   }, [tabValue]);
+
+  useEffect(() => {
+    // 첫 번째 주소의 잔액을 불러옴
+    if (walletData && walletData.addresses && walletData.addresses.length > 0) {
+      const address = walletData.addresses[0].wadAddress;
+      getBitcoinAddressBalance(address).then(res => {
+        setBtcBalance(res.balance);
+        setBtcBalanceFormatted(res.formattedBalance);
+        setBtcUnit(res.unit);
+      });
+      // 비트코인 가격 불러오기
+      getBitcoinPrice().then(priceData => {
+        setBtcPrice(priceData.price);
+      });
+    }
+  }, [walletData]);
 
   const init = async () => {
     try {
@@ -596,12 +617,12 @@ export default function WalletDetail(props: { disableCustomTheme?: boolean }) {
                         </TableCell>
                         <TableCell>
                           <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            {walletData.balance || '0'} {walletData.asset?.astSymbol || 'BTC'}
+                            {btcBalanceFormatted} {btcUnit}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            {priceData[walletData.asset?.astSymbol || 'BTC']?.price || '$0.00'} USD
+                            ${btcPrice && btcBalanceFormatted ? (parseFloat(btcBalanceFormatted) * btcPrice).toFixed(2) : '0.00'} USD
                           </Typography>
                         </TableCell>
                         <TableCell align="right">
